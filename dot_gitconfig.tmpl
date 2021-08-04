@@ -127,7 +127,7 @@
 [commit]
 
 	# https://help.github.com/articles/signing-commits-using-gpg/
-	gpgsign = true
+	gpgsign = false
 
 [diff]
 
@@ -183,7 +183,7 @@
 	defaultBranch = main
 
 [user]
-	email = joegeorge01@gmail.com
+	email = {{ .email }}
 	name = Joe George
 [difftool "sourcetree"]
 	cmd = /Applications/DiffMerge.app/Contents/MacOS/DiffMerge --nosplash \"$LOCAL\" \"$REMOTE\"
@@ -192,7 +192,7 @@
 	cmd = /Applications/DiffMerge.app/Contents/MacOS/DiffMerge --merge --result=\"$MERGED\" \"$LOCAL\" \"$BASE\" \"$REMOTE\"
 	trustExitCode = true
 [commit]
-	template = /Users/jgeorge/.stCommitMsg
+	template = /Users/{{ .chezmoi.username }}/.stCommitMsg
 [filter "lfs"]
 	required = true
 	clean = git-lfs clean -- %f

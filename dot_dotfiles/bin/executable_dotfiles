@@ -1,0 +1,577 @@
+#!/bin/zsh
+
+autoload colors; colors
+
+source $HOME/.dotfiles/zsh/common.zsh
+
+setopt null_glob
+
+# Log output
+function log {
+    local msg=$1
+    local color=${2:-$fg_bold[green]}
+    echo "$color>>>$reset_color $fg_bold[white]$msg$reset_color"
+}
+
+# Log output
+function logSub {
+    log $1 $fg_bold[blue]
+}
+
+# Log error output
+function err {
+    log $1 $fg_bold[red]
+}
+
+# Create a directory
+function makedir {
+    if [[ ! -d $1 ]]; then
+        mkdir -p $1
+        logSub "Created $1/"
+    fi
+}
+
+# Create a symlink
+function link {
+    if [[ ! -r $2 ]]; then
+        ln -s $1 $2
+        logSub "Linked $1 -> $2"
+    fi
+}
+
+# Fix terminal config
+function fixterm {
+    if [[ $TERM == "xterm-kitty" && $(uname -s) == "Darwin" && ! -d $HOME/.terminfo/78/xterm-kitty ]]; then
+        local tmpfile=$(mktemp /tmp/dotfiles.XXXXXX)
+        infocmp xterm-kitty > $tmpfile
+        tic -x -o $HOME/.terminfo $tmpfile &> /dev/null
+        rm $tmpfile
+    fi
+
+    # Fix terminal definition so C-H works properly in neovim
+    kbs=$(infocmp $TERM | grep -o 'kbs=[^,]\+')
+    if [[ $kbs =~ "kbs=^[hH]" ]]; then
+        logSub "Fixing backspace code in terminfo..."
+        infocmp $TERM | sed 's/kbs=^[hH]/kbs=\\177/' > /tmp/$TERM.ti
+        tic /tmp/$TERM.ti
+        rm /tmp/$TERM.ti
+    fi
+}
+
+# Check if a command exists
+function checkcmd {
+    local cmd=$1
+    local required=$2
+    if (( ! $+commands[$cmd] )); then
+        err "$cmd is missing"
+        if [[ $required == "1" ]]; then
+            exit 1
+        fi
+    fi
+}
+
+# Basic health check
+function dotfiles-health {
+    local os=$(uname)
+
+    checkcmd brew
+    checkcmd tmux
+
+    if [[ $os == "Linux" ]]; then
+        checkcmd unzip 1
+        checkcmd xclip
+    fi
+}
+
+# Rebuild bat cache
+function dotfiles-bat {
+    if (( ! $+commands[bat] )); then
+      log "Skipping bat cache update"
+      return
+    fi
+    log "Rebuilding bat cache..."
+    local out=$(bat cache --build 2>&1)
+    if (( $? )); then
+        err "Error rebuilding bat cache"
+        err $out
+    fi
+}
+
+# Install build tools necessary for building other things like python
+function dotfiles-buildtools {
+    log "Installing build tools..."
+    local out=""
+    local code=""
+
+    if [[ $OSTYPE == linux* ]]; then
+        local installed_packages=($(dpkg-query --show --showformat '${Package}\n'))
+        local desired_packages=(
+            make
+            build-essential
+            libssl-dev
+            zlib1g-dev
+            libbz2-dev
+            libreadline-dev
+            libsqlite3-dev
+            wget
+            curl
+            llvm
+            libncursesw5-dev
+            xz-utils
+            tk-dev
+            libxml2-dev
+            libxmlsec1-dev
+            libffi-dev
+            liblzma-dev
+        )
+        for pkg in $desired_packages; do
+            if ((! $installed_packages[(Ie)$pkg])); then
+                out=$(sudo apt install -y $pkg 2>&1)
+                if (( $? )); then
+                    err "Error installing $pkg"
+                    err $out
+                else
+                    logSub "Installed $pkg"
+                fi
+            fi
+        done
+    else
+        out=$(brew install openssl readline sqlite3 xz zlib 2>&1)
+        if (( $? )); then
+            err "Error installing build tools"
+            err $out
+        fi
+    fi
+}
+
+# Link dotfiles into $HOME, update terminfo
+function dotfiles-home {
+    log "Updating home directory files..."
+
+    # Remove broken links
+    for f in $HOME/.*(@) $CONFIGDIR/*(@); do
+        if [[ ! -e $f ]]; then
+            rm $f
+            logSub "Removed $f"
+        fi
+    done
+
+    for f in $DOTFILES/home/*(.); do
+        link $f $HOME/.$f:t
+    done
+
+    for f in $DOTFILES/config/*; do
+        link $f $CONFIGDIR/$f:t
+    done
+
+    makedir $CACHEDIR/tmux/resurrect
+    makedir $CACHEDIR/zsh
+    makedir $CACHEDIR/direnv/allow
+
+    makedir $CONFIGDIR
+
+    # Fix the terminal definition so that C-H works properly in neovim. This
+    # function may also need to be run for the tmux terminal type.
+    fixterm
+}
+
+# Link and activate launchd scripts
+function dotfiles-launchd {
+    log "Linking and bootstrapping launchd scripts..."
+
+    for f in $DOTFILES/launchd/*; do
+        if [[ ! -h $HOME/Library/LaunchAgents/$f:t ]]; then
+            link $f $HOME/Library/LaunchAgents/$f:t
+            launchctl bootstrap gui/$UID $HOME/Library/LaunchAgents/$f:t
+            logSub "Bootstrapped $f:t"
+        fi
+    done
+}
+
+# Install homebrew and core packages, update packages
+function dotfiles-brew {
+    if [[ $OSTYPE == linux* ]]; then
+        groups | grep brew > /dev/null
+        if (( $? )); then
+            err 'User is not in brew group'
+            return
+        fi
+
+        local base_group=$(stat -c '%G' $HOMEBREW_BASE)
+        if [[ $base_group != 'brew' ]]; then
+            err "$HOMEBREW_BASE is not owned by brew group"
+            return
+        fi
+    fi
+
+    log "Updating brew..."
+
+    if [[ $OSTYPE == linux* ]]; then
+        if (( ! $+commands[git] )) || (( ! $+commands[gcc] )) || (( ! $+commands[curl] )); then
+            logSub "Installing system requirements..."
+            sudo apt-get update
+            sudo apt-get install -y build-essential curl file git || true
+        fi
+    fi
+
+    if ! hash brew; then
+        log "Installing homebrew..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
+
+        # If homebrew was just installed, ensure it's in the path
+        export PATH=$HOMEBREW_BASE/bin:$PATH
+
+        if [[ $OSTYPE == linux* ]]; then
+            # Add a brew group so that the current user can manage brew
+            sudo groupadd brew
+            sudo usermod -a -G brew $USER
+            sudo chgrp -R brew $HOMEBREW_BASE
+            sudo chmod g+w -R $HOMEBREW_BASE
+        fi
+
+        rehash
+    fi
+
+    logSub "Checking for missing brew packages..."
+    brew_packages=(
+        'asdf'        # version manager
+        'bash'        # update from system stock version
+        'bat'         # better cat
+        'deno'        # TS runtime
+        'direnv'      # environment manager
+        'fd'          # file finder
+        'fzf'         # fuzzy finder
+        'git'         # update from system stock git
+        'git-delta'   # prettier git diffs
+        'jq'          # command line JSON processor
+        'node'        # Node.js
+        'poetry'      # python project package manager
+        'ripgrep'     # better grep
+        'tig'         # terminal git ui
+        'tmux'        # terminal manager
+        'zsh'         # newer zsh
+    )
+
+    brew_casks=""
+
+    if [[ $OSTYPE == darwin* ]]; then
+        brew_casks=(
+            'font-jetbrains-mono-nerd-font'
+            'kitty'
+            'phoenix'
+        )
+
+        taps=($(brew tap))
+        if ((! $taps[(Ie)homebrew/cask-fonts])); then
+            brew tap homebrew/cask-fonts
+        fi
+    fi
+
+    local need_rehash=0
+
+    local installed_packages=($(brew ls --versions $brew_packages | awk '{ print $1 }'))
+    for pkg in $brew_packages; do
+        if ((! $installed_packages[(Ie)$pkg])); then
+            logSub "Installing $pkg..."
+            brew install $pkg
+            need_rehash=1
+        fi
+    done
+
+    local installed_casks=($(brew ls --versions --cask $brew_casks | awk '{ print $1 }'))
+    for pkg in $brew_casks; do
+        if ((! $installed_casks[(Ie)$pkg])); then
+            logSub "Installing $pkg..."
+            brew install $pkg
+            need_rehash=1
+        fi
+    done
+
+    if (( $need_rehash )); then
+        # Let the shell know about any newly installed packages
+        rehash
+    fi
+
+    logSub "Updating installed brew packages..."
+    brew upgrade
+
+    # Remove git's included zsh completions in favor of the system completions
+    if [[ -f $HOMEBREW_BASE/share/zsh/site-functions/_git ]]; then
+        rm -f $HOMEBREW_BASE/share/zsh/site-functions/_git
+    fi
+}
+
+# Update zsh plugins
+function dotfiles-zsh {
+    log "Updating zsh plugins..."
+
+    if [[ -z $ZPLUGDIR ]]; then
+        err "ZPLUGDIR not defined"
+        return
+    fi
+
+    local out=""
+    local head=""
+
+    for plugin in $ZPLUGDIR/*/*; do
+        head=$(git -C $plugin rev-parse HEAD)
+        out=$(git -C $plugin pull -q --recurse-submodules 2>&1)
+        if (( $? )); then
+            err "Error updating ${plugin}"
+            err $out
+            continue
+        fi
+        out=$(git -C $plugin submodule update --remote 2>& 1)
+        if (( $? )); then
+            err "Error updating ${plugin}"
+            err $out
+            continue
+        fi
+        if [[ $(git -C $plugin rev-parse HEAD) != $head ]]; then 
+            logSub "Updated ${plugin:h:t}/${plugin:t}"
+        fi
+    done
+}
+
+# Update global python packages
+function dotfiles-python {
+    log "Updating global python packages..."
+
+    local out=""
+    out=$(direnv exec / pip install -U pip setuptools pynvim neovim-remote > /dev/null 2>& 1)
+    if (( $? )); then
+        err "Error updating packages"
+        err $out
+    fi
+
+    poetry completions zsh > $ZCOMPDIR/_poetry
+    logSub "Installed poetry completions"
+}
+
+# Update global npm packages
+function dotfiles-node {
+    log "Updating global node packages..."
+
+    # get list of outdated global packages
+    local mods=($(direnv exec / npm --registry=https://registry.npmjs.org outdated -g --parseable))
+    for mod in $mods; do
+        # extract current and latest fields
+        array=(${(@s/:/)mod})
+        currentPkg=$array[3]
+        latestPkg=$array[4]
+
+        # extract current and latest versions, minus any prerelease tags
+        currentVerParts=(${(@s/@/)currentPkg})
+        currentVer=$currentVerParts[2]
+        latestVerParts=(${(@s/@/)latestPkg})
+        latestVer=$latestVerParts[2]
+
+        if [[ $latestVer == 'linked' ]]; then
+            logSub "Skipping $latestPkg"
+            continue
+        fi
+
+        # read versions into arrays
+        current=(${(@s/./)currentVer})
+        latest=(${(@s/./)latestVer})
+
+        # if latest is newer than current, install latest
+        if (( latest[1] > current[1] )) || {
+            (( latest[1] == current[1] )) &&
+            (( latest[2] > current[2] )) || {
+                (( latest[1] == current[1] )) &&
+                (( latest[2] == current[2] )) &&
+                (( latest[3] > current[3] ));
+            };
+        }; then
+            direnv exec / npm install --registry=https://registry.npmjs.org --progress=false -g $latestPkg > /dev/null
+            logSub "Installed $latestPkg"
+        fi
+    done
+
+    local desired_packages=(
+        eslint_d
+        prettier
+        neovim
+    )
+
+    for pkg in $desired_packages; do
+        direnv exec / npm ls -g --depth=0 $pkg > /dev/null 2>&1
+        if (( $? )); then
+            local out=""
+            out=$(direnv exec / npm install -g $pkg > /dev/null 2>&1 )
+            if (( $? )); then
+                err "Error installing $pkg"
+                err $out
+            else
+                logSub "Installed $pkg"
+            fi
+        fi
+    done
+}
+
+# Update tmux plugins
+function dotfiles-tmux {
+    log "Updating tmux plugins..."
+    local out=""
+
+    if [[ -z $TMUX_PLUGIN_MANAGER_PATH ]]; then
+        err "TMUX_PLUGIN_MANAGER_PATH not defined"
+        return
+    fi
+
+    if [[ -d $TMUX_PLUGIN_MANAGER_PATH/tpm ]]; then
+        out=$($TMUX_PLUGIN_MANAGER_PATH/tpm/bin/install_plugins 2>&1)
+        if (( $? )); then
+            err "Error installing plugins"
+            err $out
+        fi
+    fi
+
+    if [[ -d $TMUX_PLUGIN_MANAGER_PATH ]]; then
+        for plugin in $TMUX_PLUGIN_MANAGER_PATH/*; do
+            head=$(git -C $plugin rev-parse HEAD)
+            git -C $plugin pull -q --recurse-submodules > /dev/null
+            if (( $? )); then
+                err "Error updating $plugin"
+                continue
+            fi
+            git -C $plugin submodule update --remote -q
+            if (( $? )); then
+                err "Error updating $plugin"
+                continue
+            fi
+            if [[ $(git -C $plugin rev-parse HEAD) != $head ]]; then 
+                logSub "Updated ${plugin:t}"
+            fi
+        done
+    fi
+}
+
+function get-asdf-version {
+    local plugin=$1
+    version=$(asdf current $plugin 2> /dev/null)
+    if [[ -z $version ]]; then
+        local versions=($(asdf list $plugin 2> /dev/null))
+        if [[ -n $versions ]]; then
+            version=$(echo $versions[-1] | awk '{ print $1 }')
+        fi
+    else
+        version=$(echo $version | awk '{ print $2 }')
+    fi
+    echo $version
+}
+
+# Update asdf plugins
+function dotfiles-asdf {
+    if (( ! $+commands[asdf] )); then
+        log "Skipping asdf update"
+        return
+    fi
+
+    log "Updating asdf..."
+
+    # All installed plugins
+    local asdf_plugins=($(asdf plugin list))
+
+    # Other plugins that should be installed
+    local asdf_desired_plugins=(
+        direnv
+        python
+        java
+        ruby
+        nodejs
+    )
+
+    local -a installed_plugins
+
+    # Add any missing plugins
+    for plugin in $asdf_desired_plugins; do
+        if (( ! $asdf_plugins[(Ie)$plugin] )); then
+            asdf plugin add $plugin > /dev/null
+            installed_plugins+=($plugin)
+            logSub "Installed $plugin plugin"
+        fi
+    done
+
+    # Update all plugins
+    logSub "Updating plugins..."
+    for plugin in $(asdf plugin list); do
+        if ((! $installed_plugins[(Ie)$plugin])); then
+            asdf plugin update $plugin > /dev/null
+        fi
+    done
+
+    # Setup the "system" install for asdf-direnv
+    if [[ -d $ASDF_DATA_DIR ]]; then
+        # For `asdf exec direnv` to work, asdf needs a direnv shim. For it to
+        # be able to create that, *some* installed version of direnv needs a
+        # binary. If we only want to use the system install, we have to create
+        # a link to the system direnv binary in installs/direnv/system/bin.
+        if [[ ! -L $ASDF_DATA_DIR/installs/direnv/system/bin/direnv ]]; then
+            mkdir -p $ASDF_DATA_DIR/installs/direnv/system/bin
+            ln -s $HOMEBREW_BASE/bin/direnv $ASDF_DATA_DIR/installs/direnv/system/bin
+            asdf reshim
+            logSub "Created direnv link"
+        fi
+
+        # asdf needs a directory to create environments for each installed
+        # version. 
+        if [[ ! -d $ASDF_DATA_DIR/installs/direnv/system/env ]]; then
+            mkdir -p $ASDF_DATA_DIR/installs/direnv/system/env
+            logSub "Created direnv environment directory"
+        fi
+
+        asdf global direnv system
+    fi
+}
+
+cd $HOME
+
+if [[ -n $1 ]]; then
+    if [[ $1 == -h || $1 == --help ]]; then
+        echo 'usage: dotfiles [-h | --help | <group>]'
+        echo
+        echo 'Update local environment. All groups are updated by default.'
+        echo
+        echo 'Options:'
+        echo '    -h, --help     Show this help message'
+        echo '    <group>        A group to update'
+        echo
+        echo 'Available groups:'
+        echo '    asdf           Update asdf plugins, install defaults'
+        echo '    bat            Rebuild bat theme and filetype cache'
+        echo '    brew           Update brew packages, install defaults'
+        echo '    home           Update dotfiles and home directories, fixup terminfo database'
+        echo '    launchd        Link and bootstrap launchd scripts'
+        echo '    node           Update global node packages, install defaults'
+        echo '    python         Update global python packages, install defaults'
+        echo '    tmux           Update tpm packages'
+        echo '    vim            Update vim plugins'
+        echo '    zsh            Update zsh plugins'
+    elif [[ $1 == -* ]]; then
+        echo "Unknown option $1"
+        exit 1
+    else
+        dotfiles-$1
+        log "Done"
+    fi
+else
+    dotfiles-health
+    dotfiles-home
+    dotfiles-brew
+    dotfiles-buildtools
+    dotfiles-asdf
+
+    dotfiles-zsh
+    dotfiles-python
+    dotfiles-node
+    dotfiles-tmux
+    dotfiles-bat
+
+    if [[ $OSTYPE == darwin* ]]; then
+        dotfiles-launchd
+    fi
+
+    log "Done"
+fi

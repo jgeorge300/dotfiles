@@ -700,8 +700,7 @@ ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(history-substring-search-up history-substring-se
 
 # Prompt
 # --------------------------------------------------------------------------
-source $ZPLUGDIR/romkatv/powerlevel10k/powerlevel10k.zsh-theme
-[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
+[[ -f ~/.promptrc ]] && source ~/.promptrc
 
 # Local config
 # --------------------------------------------------------------------------

@@ -180,30 +180,6 @@
           }
         },
         {
-          "type": "angular",
-          "style": "diamond",
-          "leading_diamond": "\uE0B2",
-          "trailing_diamond": "<transparent,#ffffff>\uE0B2</>",
-          "foreground": "#ce092f",
-          "background": "#ffffff",
-          "properties": {
-            "prefix": "\uE753 ",
-            "postfix": ""
-          }
-        },
-        {
-          "type": "julia",
-          "style": "diamond",
-          "leading_diamond": "\uE0B2",
-          "trailing_diamond": "<transparent,#945bb3>\uE0B2</>",
-          "foreground": "#359a25",
-          "background": "#945bb3",
-          "properties": {
-            "prefix": "<#ca3c34>\uE624</> ",
-            "postfix": ""
-          }
-        },
-        {
           "type": "ruby",
           "style": "diamond",
           "leading_diamond": "\uE0B2",

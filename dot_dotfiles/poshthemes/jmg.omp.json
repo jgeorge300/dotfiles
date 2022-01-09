@@ -144,30 +144,6 @@
           }
         },
         {
-          "type": "php",
-          "style": "diamond",
-          "leading_diamond": "\uE0B2",
-          "trailing_diamond": "<transparent,#787CB5>\uE0B2</>",
-          "foreground": "#000000",
-          "background": "#787CB5",
-          "properties": {
-            "prefix": "\ue73d ",
-            "postfix": ""
-          }
-        },
-        {
-          "type": "dotnet",
-          "style": "diamond",
-          "leading_diamond": "\uE0B2",
-          "trailing_diamond": "<transparent,#0e0e0e>\uE0B2</>",
-          "foreground": "#0d6da8",
-          "background": "#0e0e0e",
-          "properties": {
-            "prefix": "\uE77F ",
-            "postfix": ""
-          }
-        },
-        {
           "type": "go",
           "style": "diamond",
           "leading_diamond": "\uE0B2",

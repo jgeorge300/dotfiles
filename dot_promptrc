@@ -22,4 +22,4 @@ if [ "$TERM" != "linux" ] && [ -f "/usr/local/bin/powerline-go" ]; then
     install_powerline_precmd
 fi
 
-eval "$(oh-my-posh --init --shell zsh --config ~/.dotfiles/poshthemes/hanselman-ohmyposhv3-v2.json)"
+eval "$(oh-my-posh --init --shell zsh --config ~/.dotfiles/poshthemes/jmg.omp.json)"

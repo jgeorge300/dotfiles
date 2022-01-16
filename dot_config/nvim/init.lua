@@ -4,11 +4,12 @@ vim.opt.shadafile = 'NONE'
 
 pcall(require, 'impatient')
 
-require('config.packer_cfg')
-require('config.options')
-require('config.keymaps')
-require('config.autocommands')
-require('plugins')
-require('theme')
+require('user.config.packer')
+require('user.config.options')
+require('user.config.keymaps')
+require('user.config.autocommands')
+require('user.plugins')
+require('user.theme')
+require('user.kitty')
 
 vim.opt.shadafile = ''

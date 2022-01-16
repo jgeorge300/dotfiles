@@ -160,6 +160,8 @@ function dotfiles-home {
         link $f $HOME/.$f:t
     done
 
+    makedir $CONFIGDIR
+
     for f in $DOTFILES/config/*; do
         link $f $CONFIGDIR/$f:t
     done
@@ -167,8 +169,6 @@ function dotfiles-home {
     makedir $CACHEDIR/tmux/resurrect
     makedir $CACHEDIR/zsh
     makedir $CACHEDIR/direnv/allow
-
-    makedir $CONFIGDIR
 
     # Fix the terminal definition so that C-H works properly in neovim. This
     # function may also need to be run for the tmux terminal type.
@@ -244,8 +244,10 @@ function dotfiles-brew {
         'git'         # update from system stock git
         'git-delta'   # prettier git diffs
         'jq'          # command line JSON processor
+        'neovim'      # editor
         'node'        # Node.js
-        'poetry'      # python project package manager
+        'pdm'         # python package manager
+        'python'      # default python
         'ripgrep'     # better grep
         'tig'         # terminal git ui
         'tmux'        # terminal manager
@@ -344,8 +346,9 @@ function dotfiles-python {
         err $out
     fi
 
-    poetry completions zsh > $ZCOMPDIR/_poetry
-    logSub "Installed poetry completions"
+    mkdir -p $ZCOMPDIR
+    pdm completion > $ZCOMPDIR/_pdm
+    logSub "Installed pdm completions"
 }
 
 # Update global npm packages

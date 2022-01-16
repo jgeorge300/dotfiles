@@ -21,9 +21,7 @@ zfetch $ZPLUGDIR lukechilds/zsh-better-npm-completion
 zfetch $ZPLUGDIR zsh-users/zsh-syntax-highlighting
 zfetch $ZPLUGDIR zsh-users/zsh-history-substring-search
 zfetch $ZPLUGDIR zsh-users/zsh-autosuggestions
-#zfetch $ZPLUGDIR romkatv/powerlevel10k
 zfetch $ZPLUGDIR marlonrichert/zsh-autocomplete
-zfetch $ZPLUGDIR Aloxaf/fzf-tab
 
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # ----------------------------------------------------------------------------
@@ -256,6 +254,7 @@ unalias -m '*'
 # reload the environment
 alias refresh='source ~/.zshenv && source ~/.zshrc'
 alias reload='exec env -u DIRENV_WATCHES $SHELL'
+alias reloadx86='ARCHPREFERENCE=x86_64 exec arch -x86_64 env -u DIRENV_WATCHES $SHELL'
 
 # Default command options
 alias cp='cp -i'
@@ -312,7 +311,7 @@ alias ktn="kitty @ set-tab-title"
 alias gcln='git clean -nxd'
 alias gclf='git clean -fxd'
 
-alias gd='git diff-fuzzy'
+alias gd='git diff'
 alias gds='git ds'
 alias gdv='git dv'
 alias gf='git f'
@@ -440,6 +439,7 @@ alias lld='ll -d'        # List directories
 alias llt='ls -lh -t'    # Lists human readable ordered by time
 alias lls='ls -lh -S'    # Lists human readable ordered by size
 alias la='ll -A'         # Lists human readable sizes, hidden files
+alias ds='direnv status' # Show state of direnv
 
 # Space usage
 alias dfh='df -h'
@@ -529,7 +529,7 @@ if (( $+commands[fzf] )); then
     export ESCDELAY=10
 
     # Use -1 for the bg color to specify 'none'
-    export FZF_DEFAULT_OPTS='--color=bg:-1,fg:10,bg+:-1,fg+:-1,hl:1,hl+:1,gutter:-1,spinner:14,info:14'
+    export FZF_DEFAULT_OPTS='--color=bg:-1,fg:8,bg+:-1,fg+:-1,hl:1,hl+:1,gutter:-1,spinner:14,info:14'
 
     if [[ -d $FZF_PATH/shell ]]; then
         source $FZF_PATH/shell/completion.zsh
@@ -644,13 +644,12 @@ fi
 
 # direnv
 # ------------------------------------------------------------------------
+# silence direnv's output; run `direnv status` to check
+export DIRENV_LOG_FORMAT=
 eval "$(direnv hook $SHELL)"
 
 # Line editor
 # ------------------------------------------------------------------------
-
-# fzf-tab should e loaded before plugins that wrap widgets
-source $ZPLUGDIR/Aloxaf/fzf-tab/fzf-tab.plugin.zsh
 
 # History substring search -- load this after zsh-syntax-highlighting
 # https://github.com/zsh-users/zsh-history-substring-search

@@ -646,7 +646,9 @@ fi
 # ------------------------------------------------------------------------
 # silence direnv's output; run `direnv status` to check
 export DIRENV_LOG_FORMAT=
-eval "$(direnv hook $SHELL)"
+if (( $+commands[direnv] )); then
+  eval "$(direnv hook $SHELL)"
+fi
 
 # Line editor
 # ------------------------------------------------------------------------

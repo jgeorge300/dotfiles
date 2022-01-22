@@ -1,1 +1,3 @@
-eval "$(oh-my-posh --init --shell zsh --config ~/.dotfiles/poshthemes/jmg.omp.json)"
+if (( $+commands[oh-my-posh] )); then
+  eval "$(oh-my-posh --init --shell zsh --config ~/.dotfiles/poshthemes/jmg.omp.json)"
+fi

@@ -62,18 +62,6 @@ fi
 export EDITOR=$SUDO_EDITOR
 export VISUAL=$SUDO_VISUAL
 
-# Start SSH agent if it's not already running
-# ------------------------------------------------------------------------
-if [[ -d $HOME/.ssh ]] && [[ -z $SSH_AUTH_SOCK || ! -a $SSH_AUTH_SOCK ]]; then
-    if [[ -e $HOME/.ssh/env ]]; then
-        . $HOME/.ssh/env
-    fi
-    if [[ ! -a $SSH_AUTH_SOCK ]]; then
-        eval `ssh-agent` > /dev/null
-        echo "export SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >! $HOME/.ssh/env
-    fi
-fi
-
 # Turn on color for everything
 # ------------------------------------------------------------------------
 autoload -Uz colors && colors
@@ -250,6 +238,9 @@ bindkey -v
 # Clear existing aliases
 unalias -m '*'
 
+# Simpler back
+alias b='back'
+
 # Reload zshrc. Undefine DIRENV_WATCHES (if it exists) so that direnv will
 # reload the environment
 alias refresh='source ~/.zshenv && source ~/.zshrc'
@@ -303,6 +294,7 @@ alias gco='git co'
 alias gcp='git cp'
 alias gcpe='git cp -e'
 alias gcpn='git cpn'
+alias gcpr='git checkout-pr'
 
 # Kitty shortcuts
 alias ktn="kitty @ set-tab-title"
@@ -317,7 +309,6 @@ alias gdv='git dv'
 alias gf='git f'
 alias gfp='git fp'
 alias gfr='git fr'
-alias gfpr='git pr'
 alias gg='git g'
 alias ggi='git gi'
 alias ggil='git gil'
@@ -348,7 +339,7 @@ alias grv='git rv'
 alias gs='git -c status.color=always status --short'
 alias gsh='git show'
 alias gshs='git show --stat'
-alias gshu='gs | grep UU'
+alias gsu='gs | grep UU'
 alias gwl='git worktree list'
 alias gwa='git worktree add'
 alias gwr='git worktree remove'
@@ -405,9 +396,19 @@ alias npmv="npm --loglevel error"
 alias npmr="npm --registry=https://registry.npmjs.org"
 
 alias ha='TERM=xterm-256color ssh root@homeassistant.local'
-alias halog='TERM=xterm-256color ssh root@homeassistant.local tail -f /config/home-assistant.log | bat --paging=never -l halog'
-alias adlog='TERM=xterm-256color ssh root@homeassistant.local tail -f /config/appdaemon/logs/main.log | bat --paging=never -l adlog'
-alias aderrlog='TERM=xterm-256color ssh root@homeassistant.local tail -f /config/appdaemon/logs/error.log'
+alias halog='TERM=xterm-256color ssh root@homeassistant.local tail -F /config/home-assistant.log | bat --paging=never -l halog'
+alias adlog='TERM=xterm-256color ssh root@homeassistant.local tail -F /config/appdaemon/logs/main.log | bat --paging=never -l adlog'
+alias aderrlog='TERM=xterm-256color ssh root@homeassistant.local tail -F /config/appdaemon/logs/error.log'
+
+if [[ -e $HOME/.theme ]]; then
+    theme=$(cat $HOME/.theme)
+    if [[ $theme == 'light' ]]; then
+        export THEME_VARIANT=$theme
+    elif [[ $theme == 'black' ]]; then
+        export THEME_VARIANT=$theme
+    fi
+    unset theme
+fi
 
 # Colorize ls
 
@@ -439,7 +440,7 @@ alias lld='ll -d'        # List directories
 alias llt='ls -lh -t'    # Lists human readable ordered by time
 alias lls='ls -lh -S'    # Lists human readable ordered by size
 alias la='ll -A'         # Lists human readable sizes, hidden files
-alias ds='direnv status' # Show state of direnv
+alias di='direnv-info'   # Show info about direnv
 
 # Space usage
 alias dfh='df -h'
@@ -640,9 +641,7 @@ fi
 # ------------------------------------------------------------------------
 # silence direnv's output; run `direnv status` to check
 export DIRENV_LOG_FORMAT=
-if (( $+commands[direnv] )); then
-  eval "$(direnv hook $SHELL)"
-fi
+eval "$(direnv hook $SHELL)"
 
 # Line editor
 # ------------------------------------------------------------------------
@@ -650,10 +649,6 @@ fi
 # History substring search -- load this after zsh-syntax-highlighting
 # https://github.com/zsh-users/zsh-history-substring-search
 source $ZPLUGDIR/zsh-users/zsh-history-substring-search/zsh-history-substring-search.zsh
-
-# autosuggest -- load this after zsh-syntax-highlighting and
-# zsh-history-substring-search (https://github.com/tarruda/zsh-autosuggestions)
-source $ZPLUGDIR/zsh-users/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # Color for found substrings
 HISTORY_SUBSTRING_SEARCH_HIGHLIGHT_FOUND='bg=14,fg=0,bold'
@@ -672,6 +667,11 @@ bindkey -M vicmd "j" history-substring-search-down
 bindkey '^f' vi-forward-word
 bindkey '^b' vi-forward-blank-word
 bindkey '^e' vi-end-of-line
+
+# autosuggest -- load this after zsh-syntax-highlighting and
+# zsh-history-substring-search (https://github.com/tarruda/zsh-autosuggestions)
+
+source $ZPLUGDIR/zsh-users/zsh-autosuggestions/zsh-autosuggestions.zsh
 bindkey '[24~' autosuggest-toggle
 
 # Use a solarized-friendly background color
@@ -707,5 +707,9 @@ ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(history-substring-search-up history-substring-se
 # https://github.com/zsh-users/zsh-syntax-highlighting
 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor)
 source $ZPLUGDIR/zsh-users/zsh-syntax-highlighting/zsh-syntax-highlighting.plugin.zsh
+
+# ASDF
+# --------------------------------------------------------------------------
+source ${XDG_CONFIG_HOME:-$HOME/.config}/asdf-direnv/zshrc
 
 # vim:shiftwidth=4:tabstop=4:expandtab

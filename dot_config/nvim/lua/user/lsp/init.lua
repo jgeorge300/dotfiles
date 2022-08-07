@@ -19,15 +19,6 @@ end
 local M = {}
 
 M.config = function()
-  -- give LspInfo windows a border
-  local lspconfig_win = require('lspconfig.ui.windows')
-  local default_win_opts = lspconfig_win.default_opts
-  lspconfig_win.default_opts = function(options)
-    local opts = default_win_opts(options)
-    opts.border = 'rounded'
-    return opts
-  end
-
   -- UI
   vim.fn.sign_define(
     'DiagnosticSignError',
@@ -53,15 +44,11 @@ M.config = function()
     { virtual_text = false }
   )
 
-  lsp.handlers['textDocument/hover'] = lsp.with(
-    lsp.handlers.hover,
-    { border = 'rounded' }
-  )
+  lsp.handlers['textDocument/hover'] =
+    lsp.with(lsp.handlers.hover, { border = 'rounded' })
 
-  lsp.handlers['textDocument/signatureHelp'] = lsp.with(
-    lsp.handlers.signature_help,
-    { border = 'rounded' }
-  )
+  lsp.handlers['textDocument/signatureHelp'] =
+    lsp.with(lsp.handlers.signature_help, { border = 'rounded' })
 
   -- wrap lsp.buf_attach_client to allow clients to determine whether they should
   -- actually be attached
@@ -74,35 +61,82 @@ M.config = function()
       return orig_buf_attach_client(bufnr, client_id)
     end
   end
+
+  local servers = {
+    'clangd',
+    'cssls',
+    'denols',
+    'gopls',
+    'groovyls',
+    'html',
+    'intelephense',
+    'jdtls',
+    'jsonls',
+    'prismals',
+    'pyright',
+    'rust_analyzer',
+    'solargraph',
+    'sourcekit',
+    'sumneko_lua',
+    'svelte',
+    'taplo',
+    'tsserver',
+    'vimls',
+  }
+
+  if os.getenv('NVIM_ESLINT') ~= '0' then
+    table.insert(servers, 'eslint')
+  end
+
+  for _, server in ipairs(servers) do
+    local config = M.get_lsp_config(server)
+    lspconfig[server].setup(config)
+  end
 end
 
 -- configure a client when it's attached to a buffer
 M.on_attach = function(client, bufnr)
   local opts = { buffer = bufnr }
 
-  pcall(function()
-    require('illuminate').on_attach(client)
+  req('illuminate', function(illuminate)
+    illuminate.on_attach(client)
+  end)
+  req('lsp_signature', function(sig)
+    sig.on_attach({ max_width = 80 })
   end)
 
-  pcall(function()
-    require('lsp_signature').on_attach({ max_width = 80 })
-  end)
+  -- navic can only attach to one client per buffer, so don't attach to clients
+  -- that don't supply useful info
+  if
+    client.name ~= 'null-ls'
+    and client.name ~= 'eslint'
+    and client.name ~= 'copilot'
+  then
+    req('nvim-navic', function(navic)
+      navic.attach(client, bufnr)
+    end)
+  end
 
   -- perform general setup
+  local caps = client.server_capabilities
 
-  if client.resolved_capabilities.goto_definition then
+  if caps.codeActionProvider then
+    util.lmap('a', '<cmd>lua vim.lsp.buf.code_action()<cr>', opts)
+  end
+
+  if caps.definitionProvider then
     util.nmap('<C-]>', '<cmd>lua vim.lsp.buf.definition()<cr>', opts)
   end
 
-  if client.resolved_capabilities.hover then
+  if caps.hoverProvider then
     util.map('K', '<cmd>lua vim.lsp.buf.hover()<cr>', opts)
   end
 
-  if client.resolved_capabilities.rename then
+  if caps.renameProvider then
     util.lmap('r', '<cmd>lua vim.lsp.buf.rename()<cr>', opts)
   end
 
-  if client.resolved_capabilities.document_formatting then
+  if caps.documentFormattingProvider then
     util.bufcmd('Format', 'lua require("user.lsp").format_sync()')
     util.lmap('F', '<cmd>Format<cr>', opts)
     -- vim.cmd(
@@ -149,7 +183,7 @@ end
 M.format_sync = function()
   local clients = vim.tbl_values(vim.lsp.buf_get_clients())
   local formatters = vim.tbl_filter(function(client)
-    return client.supports_method('textDocument/formatting')
+    return client.server_capabilities.documentFormattingProvider
   end, clients)
 
   local formatter
@@ -157,23 +191,20 @@ M.format_sync = function()
     return
   end
 
-  if #formatters == 1 then
-    formatter = formatters[1]
-  else
+  -- if there are multiple formatters, use the one that's not null-ls
+  if #formatters > 1 then
     local non_null_ls = vim.tbl_filter(function(client)
       return client.name ~= 'null-ls'
     end, formatters)
     formatter = non_null_ls[1]
+  else
+    formatter = formatters[1]
   end
 
   local params = vim.lsp.util.make_formatting_params(nil)
   local bufnr = vim.api.nvim_get_current_buf()
-  local result, err = formatter.request_sync(
-    'textDocument/formatting',
-    params,
-    5000,
-    bufnr
-  )
+  local result, err =
+    formatter.request_sync('textDocument/formatting', params, 5000, bufnr)
   if result and result.result then
     vim.lsp.util.apply_text_edits(
       result.result,
@@ -219,9 +250,8 @@ M.get_lsp_config = function(server)
 
   -- add cmp capabilities
   local cmp = require('cmp_nvim_lsp')
-  config.capabilities = cmp.update_capabilities(
-    vim.lsp.protocol.make_client_capabilities()
-  )
+  config.capabilities =
+    cmp.update_capabilities(vim.lsp.protocol.make_client_capabilities())
 
   return config
 end

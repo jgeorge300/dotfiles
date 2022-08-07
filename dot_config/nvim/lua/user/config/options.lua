@@ -2,7 +2,7 @@ local o = vim.opt
 local g = vim.g
 
 -- Enable lua filetype detection
-if vim.fn.has('nvim-0.7') then
+if vim.fn.has('nvim-0.7') and not vim.fn.has('nvim-0.8') then
   g.do_filetype_lua = 1
   g.did_load_filetypes = 0
 end
@@ -97,9 +97,6 @@ o.wildignore = o.wildignore + '*.pyc' + '*.obj' + '*.bin' + 'a.out'
 
 -- better diffing
 o.diffopt = o.diffopt + { 'internal', 'algorithm:patience' }
-
--- don't add a trailing newline to files that are missing one
-o.fixeol = false
 
 -- set python version for pyx commands
 if vim.fn.has('pythonx') == 1 then

@@ -296,9 +296,6 @@ alias gcpe='git cp -e'
 alias gcpn='git cpn'
 alias gcpr='git checkout-pr'
 
-# Kitty shortcuts
-alias ktn="kitty @ set-tab-title"
-
 # Cleanup
 alias gcln='git clean -nxd'
 alias gclf='git clean -fxd'
@@ -394,6 +391,7 @@ alias swiftc="xcrun -sdk macosx swiftc"
 
 alias npmv="npm --loglevel error"
 alias npmr="npm --registry=https://registry.npmjs.org"
+alias px="pnpm exec"
 
 alias ha='TERM=xterm-256color ssh root@homeassistant.local'
 alias halog='TERM=xterm-256color ssh root@homeassistant.local tail -F /config/home-assistant.log | bat --paging=never -l halog'
@@ -530,7 +528,7 @@ if (( $+commands[fzf] )); then
     export ESCDELAY=10
 
     # Use -1 for the bg color to specify 'none'
-    export FZF_DEFAULT_OPTS='--color=bg:-1,fg:8,bg+:-1,fg+:-1,hl:1,hl+:1,gutter:-1,spinner:14,info:14'
+    export FZF_DEFAULT_OPTS='--color=bg:-1,fg:7,bg+:-1,fg+:-1,hl:5,hl+:5,marker:18,gutter:-1,spinner:14,info:14'
 
     if [[ -d $FZF_PATH/shell ]]; then
         source $FZF_PATH/shell/completion.zsh
@@ -614,7 +612,7 @@ if [[ "$TERM_PROGRAM" == "Apple_Terminal" ]]; then
     precmd_functions=($precmd_functions update_cwd)
 
     if [[ "$TERM" == "xterm-256color" ]]; then
-        export TERM=xterm-256color-italic
+#        export TERM=xterm-256color-italic
     fi
 fi
 
@@ -710,6 +708,12 @@ source $ZPLUGDIR/zsh-users/zsh-syntax-highlighting/zsh-syntax-highlighting.plugi
 
 # ASDF
 # --------------------------------------------------------------------------
-source ${XDG_CONFIG_HOME:-$HOME/.config}/asdf-direnv/zshrc
+#source "${XDG_CONFIG_HOME:-$HOME/.config}/asdf-direnv/zshrc"
+
+# Bun
+# --------------------------------------------------------------------------
+if [ -s "$HOME/.bun/_bun" ]; then
+    source "$HOME/.bun/_bun"
+fi
 
 # vim:shiftwidth=4:tabstop=4:expandtab

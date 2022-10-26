@@ -27,8 +27,8 @@ zfetch $ZPLUGDIR marlonrichert/zsh-autocomplete
 # ----------------------------------------------------------------------------
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block, everything else may go below.
-# if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-#   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+# if [[ -r "$XDG_CACHE_HOME/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+#   source "$XDG_CACHE_HOME/p10k-instant-prompt-${(%):-%n}.zsh"
 # fi
 
 # Enable profiling
@@ -119,7 +119,7 @@ fi
 } &!
 
 # Kitty completions
-if (( $+commands[kitty] )); then
+if [[ $TERM == "kitty" ]]; then
     kitty + complete setup zsh | source /dev/stdin
 fi
 
@@ -348,6 +348,17 @@ alias ts='tig status'
 # ssh in interactive shells
 # alias ssh=themed_ssh
 
+# vim
+if (( $+commands[nvim] )); then
+    if [[ -n $WEZTERM_PANE ]]; then
+        alias vi="nvim --listen /tmp/nvim-wt$WEZTERM_PANE"
+    else
+        alias vi=nvim
+    fi
+elif (( $+commands[vim] )); then
+    alias vi=vim
+fi
+
 # tmux
 alias tls='tmux list-sessions'
 alias tas='tmux attach -t'
@@ -374,6 +385,7 @@ alias mkdir="nocorrect ${aliases[mkdir]:-mkdir}"
 alias mv="nocorrect ${aliases[mv]:-mv}"
 alias rm="nocorrect ${aliases[rm]:-rm}"
 alias vim="nocorrect ${aliases[vim]:-vim}"
+alias nvim="nocorrect ${aliases[nvim]:-nvim}"
 alias tsd="nocorrect ${aliases[tsd]:-tsd}"
 alias jake="nocorrect ${aliases[jake]:-jake}"
 
@@ -612,12 +624,13 @@ if [[ "$TERM_PROGRAM" == "Apple_Terminal" ]]; then
     precmd_functions=($precmd_functions update_cwd)
 
     if [[ "$TERM" == "xterm-256color" ]]; then
-#        export TERM=xterm-256color-italic
+        export TERM=xterm-256color-italic
     fi
 fi
 
 # Node
 # ----------------------------------------------------------------------------
+
 # Load NPM completion
 if (( $+commands[npm] )); then
     source $ZPLUGDIR/lukechilds/zsh-better-npm-completion/zsh-better-npm-completion.plugin.zsh
@@ -625,14 +638,14 @@ fi
 
 # TPM
 # ------------------------------------------------------------------------
-if [[ ! -d $DATADIR/tmux ]]; then
-    mkdir $DATADIR/tmux
+if [[ ! -d $XDG_DATA_HOME/tmux ]]; then
+    mkdir $XDG_DATA_HOME/tmux
 fi
 
-zfetch $DATADIR/tmux tmux-plugins/tpm
+zfetch $XDG_DATA_HOME/tmux tmux-plugins/tpm
 
-if [[ ! -d $CACHEDIR/tmux ]]; then
-    mkdir $CACHEDIR/tmux
+if [[ ! -d $XDG_CACHE_HOME/tmux ]]; then
+    mkdir $XDG_CACHE_HOME/tmux
 fi
 
 # direnv
@@ -693,11 +706,15 @@ ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(history-substring-search-up history-substring-se
 
 # Prompt
 # --------------------------------------------------------------------------
-[[ -f ~/.promptrc ]] && source ~/.promptrc
+[[ -f ${ZDOTDIR}/ohmyposhrc ]] && source ${ZDOTDIR}/ohmyposhrc
+
+
+bindkey '^[[A' up-line-or-local-history
+bindkey '^[[B' down-line-or-local-history
 
 # Local config
 # --------------------------------------------------------------------------
-[[ -f ~/.config/zsh/zshrc ]] && source ~/.config/zsh/zshrc
+[[ -f $ZCONFDIR/zshrc ]] && source $ZCONFDIR/zshrc
 
 # Syntax highlighting
 # --------------------------------------------------------------------------
@@ -708,7 +725,7 @@ source $ZPLUGDIR/zsh-users/zsh-syntax-highlighting/zsh-syntax-highlighting.plugi
 
 # ASDF
 # --------------------------------------------------------------------------
-#source "${XDG_CONFIG_HOME:-$HOME/.config}/asdf-direnv/zshrc"
+source "$XDG_CONFIG_HOME/asdf-direnv/zshrc"
 
 # Bun
 # --------------------------------------------------------------------------

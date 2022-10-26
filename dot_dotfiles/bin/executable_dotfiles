@@ -39,29 +39,22 @@ function link {
     fi
 }
 
+# Sed
+function sedInPlace {
+    if [[ $OSTYPE == darwin* ]]; then
+        sed -i "" $@
+    else
+        sed -i"" $@
+    fi
+}
+
 # Fix terminal config
 function fixterm {
-    if [[ $TERM == "xterm-kitty" ]]; then
-        infocmp &> /dev/null
-        if (( $? )); then
-            local tmpfile=$(mktemp /tmp/dotfiles.XXXXXX)
-            curl --silent -o $tmpfile https://raw.githubusercontent.com/kovidgoyal/kitty/master/terminfo/x/xterm-kitty
-            tic -x -o $HOME/.terminfo $tmpfile &> /dev/null
-            rm $tmpfile
-            logSub "Installed kitty terminfo"
-        fi
-    fi
-
-    if [[ $TERM == "wezterm" ]]; then
-        infocmp &> /dev/null
-        if (( $? )); then
-            local tmpfile=$(mktemp /tmp/dotfiles.XXXXXX)
-            curl --silent -o $tmpfile https://raw.githubusercontent.com/wez/wezterm/master/termwiz/data/wezterm.terminfo
-            tic -x -o $HOME/.terminfo $tmpfile &> /dev/null
-            rm $tmpfile
-            logSub "Installed wezterm terminfo"
-        fi
-    fi
+    local tmpfile=$(mktemp /tmp/dotfiles.XXXXXX)
+    curl --silent -o $tmpfile https://raw.githubusercontent.com/wez/wezterm/master/termwiz/data/wezterm.terminfo
+    tic -x -o $HOME/.terminfo $tmpfile &> /dev/null
+    rm $tmpfile
+    logSub "Installed wezterm terminfo"
 
     # Fix terminal definition so C-H works properly in neovim
     kbs=$(infocmp | grep -o 'kbs=[^,]\+')
@@ -178,7 +171,7 @@ function dotfiles-home {
     log "Updating home directory files..."
 
     # Remove broken links
-    for f in $HOME/.*(@) $CONFIGDIR/*(@); do
+    for f in $HOME/.*(@) $XDG_CONFIG_HOME/*(@); do
         if [[ ! -e $f ]]; then
             rm $f
             logSub "Removed $f"
@@ -189,19 +182,38 @@ function dotfiles-home {
         link $f $HOME/.$f:t
     done
 
-    makedir $CONFIGDIR
+    makedir $XDG_CONFIG_HOME
 
     for f in $DOTFILES/config/*; do
-        link $f $CONFIGDIR/$f:t
+        if [[ -d $XDG_CONFIG_HOME/$f:t ]] && [[ ! -L $XDG_CONFIG_HOME/$f:t ]]; then
+            mkdir -p $XDG_CONFIG_HOME/local
+            mv $XDG_CONFIG_HOME/$f:t $XDG_CONFIG_HOME/local/$f:t
+            logSub "Moved $XDG_CONFIG_HOME/$f:t -> $XDG_CONFIG_HOME/local/$f:t"
+        fi
+        link $f $XDG_CONFIG_HOME/$f:t
     done
 
-    makedir $CACHEDIR/tmux/resurrect
-    makedir $CACHEDIR/zsh
-    makedir $CACHEDIR/direnv/allow
+    makedir $XDG_CACHE_HOME/tmux/resurrect
+    makedir $XDG_CACHE_HOME/zsh
+    makedir $XDG_CACHE_HOME/direnv/allow
 
     # Fix the terminal definition so that C-H works properly in neovim. This
     # function may also need to be run for the tmux terminal type.
     fixterm
+}
+
+# Install terminal fonts
+function dotfiles-fonts {
+    log "Installing terminal fonts..."
+    local fonts
+
+    if [[ $OSTYPE == darwin* ]]; then
+        fonts=($HOME/Library/Fonts/Symbols-1000*(NY1))
+        if (( ${#fonts} == 0 )) then
+            curl --silent -o "$HOME/Library/Fonts/Symbols-1000-em Nerd Font Complete.ttf" 'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/src/glyphs/Symbols-1000-em%20Nerd%20Font%20Complete.ttf'
+            logSub "Installed Symbols font"
+        fi
+    fi
 }
 
 # Link and activate launchd scripts
@@ -285,7 +297,6 @@ function dotfiles-brew {
     if [[ $OSTYPE == darwin* ]]; then
         brew_casks=(
             'font-jetbrains-mono-nerd-font'
-            'kitty'
             'phoenix'
             '1password-cli'
         )
@@ -386,14 +397,19 @@ function dotfiles-bun {
     bun completions > /dev/null
 
     # remove completion line added to zshrc
-    local zshrc=$HOME/.dotfiles/home/zshrc
-    local line=$(grep -n '# bun completions' $HOME/.zshrc | cut -f1 -d:)
+    local zshrc=$ZDOTDIR/.zshrc
+    local line=$(grep -n '# bun completions' $ZDOTDIR/.zshrc | cut -f1 -d:)
     if [[ -n $line ]]; then
         local start
         (( start = $line - 1 ))
         local end
         (( end = $line + 1 ))
-        sed -i "" "${start},${end}d" "$zshrc"
+        sedInPlace "${start},${end}d" "$zshrc"
+    fi
+
+    # remove compinit call in bun completions
+    if [[ -f "$HOME/.bun/_bun" ]]; then
+        sedInPlace "/^autoload .* compinit/s/^/# /" "$HOME/.bun/_bun"
     fi
 }
 
@@ -608,7 +624,7 @@ function dotfiles-asdf {
     done
 
     # Setup the "system" install for asdf-direnv
-    if [[ ! -d $CONFIGDIR/asdf-direnv ]]; then
+    if [[ ! -d $XDG_CONFIG_HOME/asdf-direnv ]]; then
         asdf direnv setup --shell zsh --version system
     fi
 }
@@ -649,6 +665,7 @@ if [[ -n $1 ]]; then
 else
     dotfiles-health
     dotfiles-home
+    dotfiles-fonts
     dotfiles-brew
     dotfiles-fonts
     dotfiles-buildtools

@@ -1,6 +1,16 @@
 root = true
 
-[*.{ts,tsx,js,jsx,css,scss}]
-indent_style = space
-indent_size = 2
+[*.{js,ts,tsx,jsx}]
+indent_size = 4
+tab_width = 4
+
+[*.md]
 max_line_length = 80
+
+[*.java]
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml}]
+indent_size = 2
+indent_style = space

@@ -1,4 +1,4 @@
-local c = require('user.colors.wezterm').active_palette()
+local c = require('user.themes.wezterm').active_palette()
 
 return {
   normal = {
@@ -15,5 +15,6 @@ return {
 
   inactive = {
     a = { fg = c['bg_0'], bg = c['bg_1'] },
+    c = { fg = c['dim_0'], bg = c['bg_0'] },
   },
 }

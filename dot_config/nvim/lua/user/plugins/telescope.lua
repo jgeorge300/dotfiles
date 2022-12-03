@@ -18,7 +18,6 @@ M.config = function()
         preview_height = 0.5,
 
         width = function(_, max_columns, _)
-          print('max cols: ' .. max_columns)
           return math.max(max_columns - 16, 80)
         end,
 
@@ -29,15 +28,15 @@ M.config = function()
       sorting_strategy = 'ascending',
       borderchars = {
         -- no border, just separators
-        prompt = { ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ' },
-        results = { '─', ' ', ' ', ' ', ' ', ' ', ' ', ' ' },
-        preview = { ' ', ' ', '─', ' ', ' ', ' ', ' ', ' ' },
+        -- prompt = { ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ' },
+        -- results = { '─', ' ', ' ', ' ', ' ', ' ', ' ', ' ' },
+        -- preview = { ' ', ' ', '─', ' ', ' ', ' ', ' ', ' ' },
 
         -- single border
-        -- { '─', '│', '─', '│', '╭', '╮', '╯', '╰' },
-        -- prompt = { '─', '│', ' ', '│', '╭', '╮', '│', '│' },
-        -- results = { '─', '│', '─', '│', '├', '┤', '╯', '╰' },
-        -- preview = { '─', '│', '─', '│', '╭', '╮', '╯', '╰' },
+        { '─', '│', '─', '│', '╭', '╮', '╯', '╰' },
+        prompt = { '─', '│', ' ', '│', '╭', '╮', '│', '│' },
+        results = { '─', '│', '─', '│', '├', '┤', '╯', '╰' },
+        preview = { '─', '│', '─', '│', '╭', '╮', '╯', '╰' },
       },
       path_display = { 'truncate' },
     },
@@ -107,7 +106,7 @@ M.config = function()
   telescope.load_extension('ui-select')
 
   local lmap = require('user.util').lmap
-  -- lmap('e', '<cmd>Telescope diagnostics bufnr=0<cr>')
+  lmap('e', '<cmd>Telescope diagnostics bufnr=0<cr>')
   lmap('f', '<cmd>Telescope find_files<cr>')
   lmap('j', '<cmd>Telescope jumplist<cr>')
   lmap('s', '<cmd>Telescope current_buffer_fuzzy_find<cr>')

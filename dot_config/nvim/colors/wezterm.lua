@@ -1,7 +1,6 @@
-local req = require('user.req')
-local wezterm = req('user.colors.wezterm')
-if not wezterm then
-  print('Unable to load wezterm theme')
+local theme = require('user.themes.wezterm')
+if not theme then
+  print('Unable to load theme')
 else
-  wezterm.apply_theme()
+  theme.apply()
 end

@@ -7,6 +7,9 @@ if vim.fn.has('nvim-0.7') and not vim.fn.has('nvim-0.8') then
   g.did_load_filetypes = 0
 end
 
+-- Leader for mappings
+g.mapleader = ';'
+
 -- Use spaces by default
 o.expandtab = true
 
@@ -60,6 +63,9 @@ o.signcolumn = 'yes'
 o.splitbelow = true
 o.splitright = true
 
+-- don't add EOL to files that don't already have one
+o.fixendofline = false
+
 o.formatoptions = o.formatoptions
   + 'r' -- automatically insert comment leader after CR
   + 'o' -- automatically insert comment leader for o/O
@@ -96,6 +102,9 @@ o.wildignore = o.wildignore + '*.pyc' + '*.obj' + '*.bin' + 'a.out'
 
 -- better diffing
 o.diffopt = o.diffopt + { 'internal', 'algorithm:patience' }
+
+-- show line numbers if the window is wide enough
+o.number = vim.go.columns >= 88
 
 -- set python version for pyx commands
 if vim.fn.has('pythonx') == 1 then
@@ -152,3 +161,11 @@ end
 
 -- Don't show hints in diagnostic lists (telescope, trouble)
 g.lsp_severity_limit = 3
+
+-- Better folding
+o.foldtext = 'v:lua.require("user.config.folding").foldtext()'
+o.foldcolumn = 'auto'
+o.fillchars:append('foldsep: ')
+o.fillchars:append('foldopen:▼')
+o.fillchars:append('foldclose:▶')
+o.fillchars:append('fold:-')

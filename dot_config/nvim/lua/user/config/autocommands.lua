@@ -10,9 +10,15 @@ local function autocmd(type, pattern, callback)
   })
 end
 
+-- make text files easier to work with
 autocmd('FileType', 'text,textile,markdown,html', function()
-  -- make text files easier to work with
   util.text_mode()
+end)
+
+-- better formatting for JavaScript
+autocmd('FileType', 'javascript', function()
+	vim.bo.formatprg = nil
+	vim.bo.formatexpr = nil
 end)
 
 autocmd('BufEnter', '*.*', function()
@@ -99,16 +105,47 @@ autoft('{ts,js}config.json', 'jsonc')
 autoft('intern.json', 'jsonc')
 autoft('intern{-.}*.json', 'jsonc')
 autoft('*.textile', 'textile')
+autoft('*.{frag,vert}', 'glsl')
 
 -- set colorscheme after TUI has loaded
-autocmd('UIEnter', '*', function()
+autocmd('VimEnter', '*', function()
   local timer = vim.loop.new_timer()
-  timer:start(0, 0, vim.schedule_wrap(function()
-    vim.api.nvim_command('colorscheme wezterm')
-  end))
+  timer:start(
+    0,
+    0,
+    vim.schedule_wrap(function()
+      vim.api.nvim_command('colorscheme wezterm')
+    end)
+  )
 end)
 
--- set colorscheme whenever the background option is set
-autocmd('OptionSet', 'background', function()
-  vim.cmd('colorscheme wezterm')
+-- improve handling of very large files
+autocmd({ 'BufReadPre', 'FileReadPre' }, '*', function()
+  local file = vim.fn.expand('<afile>')
+  local size = vim.fn.getfsize(file)
+
+  -- "large" is > 10MB
+  if size > 10000000 then
+    print('Using large file mode for ' .. file)
+
+    if vim.fn.exists(':TSBufDisable') then
+      vim.cmd('TSBufDisable highlight indent illuminate matchup')
+    end
+
+    -- if vim.fn.exists(':IlluminatePauseBuf') then
+    --   vim.cmd('IlluminatePauseBuf')
+    -- end
+
+    vim.b.lsp_disable = true
+    vim.wo.foldmethod = 'manual'
+    vim.cmd('syntax off')
+    vim.cmd('filetype off')
+    vim.bo.swapfile = false
+    vim.bo.undofile = false
+  end
+end)
+
+-- show line numbers if the window is big enough
+autocmd('VimResized', '*', function()
+  vim.wo.number = vim.go.columns > 88
 end)

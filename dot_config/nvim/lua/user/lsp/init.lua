@@ -1,11 +1,6 @@
 local modbase = ...
 local util = require('user.util')
-local req = require('user.req')
-
-local lspconfig = req('lspconfig')
-if not lspconfig then
-  return
-end
+local lspconfig = require('lspconfig')
 
 -- load the config for a given client, if it exists
 local function load_client_config(server_name)
@@ -63,8 +58,13 @@ M.config = function()
   -- should actually be attached
   local orig_buf_attach_client = lsp.buf_attach_client
   function lsp.buf_attach_client(bufnr, client_id)
+    if vim.b.lsp_disable then
+      return
+    end
+
     local client = lsp.get_client_by_id(client_id)
-    if not client.config.should_attach or client.config.should_attach(bufnr)
+    if
+      not client.config.should_attach or client.config.should_attach(bufnr)
     then
       return orig_buf_attach_client(bufnr, client_id)
     end
@@ -81,6 +81,8 @@ M.config = function()
     'intelephense',
     'jdtls',
     'jsonls',
+    'lua_ls',
+    'marksman',
     'omnisharp',
     'prismals',
     'psalm',
@@ -88,7 +90,6 @@ M.config = function()
     'rust_analyzer',
     'solargraph',
     'sourcekit',
-    'sumneko_lua',
     'svelte',
     'taplo',
     'tsserver',
@@ -110,19 +111,12 @@ end
 M.on_attach = function(client, bufnr)
   local opts = { buffer = bufnr }
 
-  req('illuminate', function(illuminate)
-    illuminate.on_attach(client)
-  end)
-  req('lsp_signature', function(sig)
-    sig.on_attach({ max_width = 80 })
-  end)
+  require('illuminate').on_attach(client)
 
   -- navic can only attach to one client per buffer, so don't attach to clients
   -- that don't supply useful info
   if client.server_capabilities.documentSymbolProvider then
-    req('nvim-navic', function(navic)
-      navic.attach(client, bufnr)
-    end)
+    require('nvim-navic').attach(client, bufnr)
   end
 
   -- perform general setup
@@ -152,9 +146,9 @@ M.on_attach = function(client, bufnr)
     -- )
   end
 
-  if not packer_plugins['trouble.nvim'] then
-    util.lmap('e', '<cmd>lua vim.lsp.diagnostic.set_loclist()<cr>', opts)
-  end
+  -- if not packer_plugins['trouble.nvim'] then
+  --   util.lmap('e', '<cmd>lua vim.lsp.diagnostic.set_loclist()<cr>', opts)
+  -- end
 
   util.lmap(
     'd',

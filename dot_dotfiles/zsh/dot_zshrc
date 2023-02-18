@@ -19,7 +19,11 @@ fi
 
 # Prompt
 # --------------------------------------------------------------------------
-if [[ -f ${ZDOTDIR}/ohmyposhrc ]]; then
+if [[ $TERM_PROGRAM == "WarpTerminal" ]]; then
+    source ${ZDOTDIR}/ohmyposhwarprc
+    bindkey '^[[A' up-line-or-local-history
+    bindkey '^[[B' down-line-or-local-history
+elif [[ -f ${ZDOTDIR}/ohmyposhrc ]]; then
     source ${ZDOTDIR}/ohmyposhrc
     bindkey '^[[A' up-line-or-local-history
     bindkey '^[[B' down-line-or-local-history
@@ -308,6 +312,7 @@ setopt   PATH_DIRS              # Perform path search even on command names with
 unsetopt CASE_GLOB              # Make globbing case insensitive
 unsetopt FLOW_CONTROL           # Disable start/stop characters in shell editor
 
+setopt PROMPT_SUBST
 # Don't show a % for partial lines
 export PROMPT_EOL_MARK=''
 

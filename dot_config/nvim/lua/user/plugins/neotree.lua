@@ -1,28 +1,39 @@
-local M = {}
+-- file explorer in sidebar
+return {
+  'nvim-neo-tree/neo-tree.nvim',
 
-M.config = function()
-  vim.g.neo_tree_remove_legacy_commands = 1
+  keys = {
+    { '<leader>n', '<cmd>Neotree reveal toggle<cr>', desc = 'NeoTree' },
+  },
 
-  require('neo-tree').setup({
-    enable_git_status = true,
+  branch = 'v2.x',
 
-    popup_border_style = 'rounded',
+  dependencies = {
+    'plenary.nvim',
+    'nvim-web-devicons',
+    'MunifTanjim/nui.nvim',
+  },
 
-    event_handlers = {
-      {
-        event = 'file_opened',
-        handler = function()
-          require('neo-tree').close_all()
-        end
-      }
-    },
+  config = function()
+    vim.g.neo_tree_remove_legacy_commands = 1
 
-    window = {
-      position = 'right'
-    },
-  })
+    require('neo-tree').setup({
+      enable_git_status = true,
 
-  require('user.util').lmap('n', '<cmd>Neotree reveal toggle<cr>')
-end
+      popup_border_style = 'rounded',
 
-return M
+      event_handlers = {
+        {
+          event = 'file_opened',
+          handler = function()
+            require('neo-tree').close_all()
+          end,
+        },
+      },
+
+      window = {
+        position = 'right',
+      },
+    })
+  end,
+}

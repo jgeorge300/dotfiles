@@ -4,13 +4,17 @@ autoload colors; colors
 
 source $HOME/.dotfiles/zsh/common.zsh
 
+if [ -d $HOMEBREW_BASE ]; then
+    export PATH=$HOMEBREW_BASE/bin:$PATH
+fi
+
 setopt null_glob
 
 # Log output
 function log {
     local msg=$1
     local color=${2:-$fg_bold[green]}
-    echo "$color>>>$reset_color $fg_bold[white]$msg$reset_color"
+    echo "$color>>>$reset_color $msg"
 }
 
 # Log output
@@ -244,14 +248,6 @@ function dotfiles-launchd {
 
 # Install homebrew and core packages, update packages
 function dotfiles-brew {
-    if [[ $OSTYPE == linux* ]]; then
-        local base_group=$(stat -c '%G' $HOMEBREW_BASE)
-        if [[ $base_group != 'brew' ]]; then
-            err "$HOMEBREW_BASE is not owned by brew group"
-            return
-        fi
-    fi
-
     log "Updating brew..."
 
     if [[ $OSTYPE == linux* ]]; then
@@ -280,6 +276,17 @@ function dotfiles-brew {
         rehash
     fi
 
+    if [[ $OSTYPE == linux* ]]; then
+        local base_group=$(stat -c '%G' $HOMEBREW_BASE)
+        if [[ $base_group != 'brew' ]]; then
+            err "$HOMEBREW_BASE is not owned by brew group"
+            return
+        fi
+    fi
+
+    logSub "Updating brew package list..."
+    brew update
+
     logSub "Checking for missing brew packages..."
     brew_packages=(
         'asdf'        # version manager
@@ -289,15 +296,10 @@ function dotfiles-brew {
         'fd'          # file finder
         'fzf'         # fuzzy finder
         'git'         # update from system stock git
-        'git-delta'   # prettier git diffs
-        'jq'          # command line JSON processor
         'pdm'         # python package manager
-        'python@3.9'  # default python
+        'python'      # default python
         'ripgrep'     # better grep
-        'starship'    # prompt
-        'stylua'      # lua formatter
         'tig'         # terminal git ui
-        'tmux'        # terminal multiplexer
     )
 
     brew_casks=""
@@ -428,6 +430,32 @@ function dotfiles-bun {
     fi
 }
 
+# Install or update rtx
+function dotfiles-rtx {
+    log "Updating rtx..."
+
+    local out=""
+    local version=""
+
+    if (( ! $+commands[rtx] )); then
+        logSub "Installing..."
+        out=$(curl -fsSL curl https://rtx.pub/install.sh | sh)
+        if (( $? )); then
+            err "Error installing rtx"
+            err $out
+        fi
+        rehash
+    else
+        out=$(rtx self-update)
+        if [[ ! $out =~ "is already up to date" ]]; then
+            version=$(rtx --version | awk '{print $1}')
+            logSub "Installed version $version"
+        fi
+    fi
+
+    rtx complete --shell zsh >! $ZDATADIR/functions/_rtx
+}
+
 # Install or update rust
 function dotfiles-rust {
     if (( ! $+commands[rustup] )); then
@@ -481,7 +509,7 @@ function dotfiles-python {
     log "Updating global python packages..."
 
     local out=""
-    out=$(direnv exec / pip install -U pip setuptools pynvim neovim-remote > /dev/null 2>& 1)
+    out=$(pip install -U pip setuptools pynvim neovim-remote > /dev/null 2>& 1)
     if (( $? )); then
         err "Error updating packages"
         err $out
@@ -495,10 +523,18 @@ function dotfiles-node {
 	return
     fi
 
+    log "Updating package managers..."
+
+    if (( $+commands[corepack] )); then
+        corepack prepare pnpm@latest --activate
+        corepack prepare npm@latest --activate
+        corepack prepare yarn@1 --activate
+    fi
+
     log "Updating global node packages..."
 
     # get list of outdated global packages
-    local mods=($(direnv exec / npm --registry=https://registry.npmjs.org outdated -g --parseable))
+    local mods=($(npm --registry=https://registry.npmjs.org outdated -g --parseable))
     for mod in $mods; do
         # extract current and latest fields
         array=(${(@s/:/)mod})
@@ -529,27 +565,9 @@ function dotfiles-node {
                 (( latest[3] > current[3] ));
             };
         }; then
-            direnv exec / npm install --registry=https://registry.npmjs.org --progress=false -g $latestPkg > /dev/null
+            local npm=$(which npm)
+            $npm install --registry=https://registry.npmjs.org --progress=false -g $latestPkg > /dev/null
             logSub "Installed $latestPkg"
-        fi
-    done
-
-    local desired_packages=(
-        eslint_d
-        neovim
-    )
-
-    for pkg in $desired_packages; do
-        direnv exec / npm ls -g --depth=0 $pkg > /dev/null 2>&1
-        if (( $? )); then
-            local out=""
-            out=$(direnv exec / npm install -g $pkg > /dev/null 2>&1 )
-            if (( $? )); then
-                err "Error installing $pkg"
-                err $out
-            else
-                logSub "Installed $pkg"
-            fi
         fi
     done
 }
@@ -565,30 +583,14 @@ function dotfiles-tmux {
     fi
 
     if [[ -d $TMUX_PLUGIN_MANAGER_PATH/tpm ]]; then
-        out=$($TMUX_PLUGIN_MANAGER_PATH/tpm/bin/install_plugins 2>&1)
-        if (( $? )); then
-            err "Error installing plugins"
-            err $out
-        fi
-    fi
+        logSub "Installing plugins..."
+        $TMUX_PLUGIN_MANAGER_PATH/tpm/bin/install_plugins
 
-    if [[ -d $TMUX_PLUGIN_MANAGER_PATH ]]; then
-        for plugin in $TMUX_PLUGIN_MANAGER_PATH/*; do
-            head=$(git -C $plugin rev-parse HEAD)
-            git -C $plugin pull -q --recurse-submodules > /dev/null
-            if (( $? )); then
-                err "Error updating $plugin"
-                continue
-            fi
-            git -C $plugin submodule update --remote -q
-            if (( $? )); then
-                err "Error updating $plugin"
-                continue
-            fi
-            if [[ $(git -C $plugin rev-parse HEAD) != $head ]]; then 
-                logSub "Updated ${plugin:t}"
-            fi
-        done
+        logSub "Removing unused plugins..."
+        $TMUX_PLUGIN_MANAGER_PATH/tpm/bin/clean_plugins
+
+        logSub "Updating plugins..."
+        $TMUX_PLUGIN_MANAGER_PATH/tpm/bin/update_plugins all
     fi
 }
 
@@ -697,8 +699,8 @@ else
     dotfiles-asdf
     dotfiles-deno
     dotfiles-bun
+    dotfiles-rtx
     dotfiles-rust
-
     dotfiles-zsh
     dotfiles-python
     dotfiles-node

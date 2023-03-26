@@ -9,6 +9,7 @@ return {
   {
     'norcalli/nvim-colorizer.lua',
     event = 'BufEnter',
+    cond = vim.go.termguicolors,
     config = function()
       require('colorizer').setup({ '*' }, {
         names = false,
@@ -31,9 +32,8 @@ return {
     'moll/vim-bbye',
     event = 'BufEnter',
     config = function()
-      local util = require('user.util')
-      util.lmap('k', '<cmd>Bdelete<cr>')
-      util.lmap('K', '<cmd>Bdelete!<cr>')
+      vim.keymap.set('n', '<leader>k', '<cmd>Bdelete<cr>')
+      vim.keymap.set('n', '<leader>K', '<cmd>Bdelete!<cr>')
     end,
   },
 
@@ -113,24 +113,14 @@ return {
   'vim-scripts/applescript.vim',
   'vim-scripts/Textile-for-VIM',
   'mustache/vim-mustache-handlebars',
+  'jwalton512/vim-blade',
 
   -- native LSP
   {
     'neovim/nvim-lspconfig',
     config = function()
-      -- setup mason and mason-lspconfig before configuring any lsp servers
-      require('mason').setup({
-        ui = {
-          border = 'rounded',
-        },
-      })
-      require('mason-lspconfig').setup()
       require('user.lsp').config()
     end,
-    dependencies = {
-      'williamboman/mason.nvim',
-      'williamboman/mason-lspconfig.nvim',
-    },
   },
 
   -- JSON schemas
@@ -138,12 +128,12 @@ return {
 
   -- highlight current word
   {
-    'RRethy/vim-illuminate',
-    -- disabled because it conflicts with matchup's highlighting for
-    -- function/end and if/end pairs
-    disable = true,
-    init = function()
-      vim.g.Illuminate_highlightPriority = -10
+    'tzachar/local-highlight.nvim',
+    config = function()
+      require('local-highlight').setup({
+        cw_hlgroup = 'LocalHighlight',
+      })
+      vim.api.nvim_set_hl(0, 'LocalHighlight', { link = 'CursorLine' })
     end,
   },
 
@@ -185,18 +175,19 @@ return {
     end,
   },
 
-  -- Laravel Blade template support
-  'jwalton512/vim-blade',
-
   -- Autosave files
   {
     'Pocco81/auto-save.nvim',
     config = function()
       require('auto-save').setup({
         condition = function(buf)
-          return vim.bo[buf].filetype == 'rust'
+          return vim.api.nvim_buf_is_valid(buf)
+            and vim.bo[buf].filetype == 'rust'
         end,
       })
     end,
   },
+
+	-- Better UI
+	'stevearc/dressing.nvim'
 }

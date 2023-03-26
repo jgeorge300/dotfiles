@@ -1,10 +1,12 @@
 local modbase = ...
-local util = require('user.util')
-local lspconfig = require('lspconfig')
+
+-- Give LspInfo window a border
+require('lspconfig.ui.windows').default_options.border = 'rounded'
 
 -- load the config for a given client, if it exists
 local function load_client_config(server_name)
-  local status, client_config = pcall(require, modbase .. '.' .. server_name)
+  local status, client_config =
+    pcall(require, modbase .. '.servers.' .. server_name)
   if not status or type(client_config) ~= 'table' then
     return {}
   end
@@ -13,7 +15,7 @@ end
 
 local M = {}
 
-M.config = function()
+function M.config()
   -- UI
   vim.fn.sign_define(
     'DiagnosticSignError',
@@ -32,86 +34,35 @@ M.config = function()
     { text = '', texthl = 'DiagnosticSignHint' }
   )
 
-  local lsp = vim.lsp
-
-  lsp.handlers['textDocument/publishDiagnostics'] = lsp.with(
-    lsp.handlers['textDocument/publishDiagnostics'],
-    { virtual_text = false }
+  vim.lsp.handlers['textDocument/publishDiagnostics'] = vim.lsp.with(
+    vim.lsp.handlers['textDocument/publishDiagnostics'],
+    { virtual_text = true }
   )
 
-  lsp.handlers['textDocument/hover'] =
-    lsp.with(lsp.handlers.hover, { border = 'rounded' })
+  vim.lsp.handlers['textDocument/hover'] =
+    vim.lsp.with(vim.lsp.handlers.hover, { border = 'rounded' })
 
-  lsp.handlers['textDocument/signatureHelp'] =
-    lsp.with(lsp.handlers.signature_help, { border = 'rounded' })
+  vim.lsp.handlers['textDocument/signatureHelp'] =
+    vim.lsp.with(vim.lsp.handlers.signature_help, { border = 'rounded' })
 
   local origTextDocDef = vim.lsp.handlers['textDocument/definition']
-  lsp.handlers['textDocument/definition'] = function(err, result, ctx, config)
+  vim.lsp.handlers['textDocument/definition'] = function(
+    err,
+    result,
+    ctx,
+    config
+  )
     -- If tsserver returns multiple results, only keep the first one
     if result ~= nil and #result > 1 then
       result = { result[1] }
     end
     origTextDocDef(err, result, ctx, config)
   end
-
-  -- wrap lsp.buf_attach_client to allow clients to determine whether they
-  -- should actually be attached
-  local orig_buf_attach_client = lsp.buf_attach_client
-  function lsp.buf_attach_client(bufnr, client_id)
-    if vim.b.lsp_disable then
-      return
-    end
-
-    local client = lsp.get_client_by_id(client_id)
-    if
-      not client.config.should_attach or client.config.should_attach(bufnr)
-    then
-      return orig_buf_attach_client(bufnr, client_id)
-    end
-  end
-
-  local servers = {
-    'clangd',
-    'cssls',
-    'denols',
-    'dockerls',
-    'gopls',
-    'groovyls',
-    'html',
-    'intelephense',
-    'jdtls',
-    'jsonls',
-    'lua_ls',
-    'marksman',
-    'omnisharp',
-    'prismals',
-    'psalm',
-    'pyright',
-    'rust_analyzer',
-    'solargraph',
-    'sourcekit',
-    'svelte',
-    'taplo',
-    'tsserver',
-    'vimls',
-    'yamlls',
-  }
-
-  if os.getenv('NVIM_ESLINT') ~= '0' then
-    table.insert(servers, 'eslint')
-  end
-
-  for _, server in ipairs(servers) do
-    local config = M.get_lsp_config(server)
-    lspconfig[server].setup(config)
-  end
 end
 
 -- configure a client when it's attached to a buffer
-M.on_attach = function(client, bufnr)
+function M.on_attach(client, bufnr)
   local opts = { buffer = bufnr }
-
-  require('illuminate').on_attach(client)
 
   -- navic can only attach to one client per buffer, so don't attach to clients
   -- that don't supply useful info
@@ -119,48 +70,41 @@ M.on_attach = function(client, bufnr)
     require('nvim-navic').attach(client, bufnr)
   end
 
-  -- perform general setup
-  local caps = client.server_capabilities
-
-  if caps.codeActionProvider then
-    util.lmap('a', '<cmd>lua vim.lsp.buf.code_action()<cr>', opts)
+  if client.server_capabilities.definitionProvider then
+    vim.keymap.set('n', '<C-]>', function()
+      vim.lsp.buf.definition()
+    end, opts)
   end
 
-  if caps.definitionProvider then
-    util.nmap('<C-]>', '<cmd>lua vim.lsp.buf.definition()<cr>', opts)
+  if client.server_capabilities.hoverProvider then
+    vim.keymap.set('', 'K', function()
+      vim.lsp.buf.hover()
+    end, opts)
   end
 
-  if caps.hoverProvider then
-    util.map('K', '<cmd>lua vim.lsp.buf.hover()<cr>', opts)
+  if client.server_capabilities.renameProvider then
+    vim.keymap.set('n', '<leader>r', function()
+      vim.lsp.buf.rename()
+    end, opts)
   end
 
-  if caps.renameProvider then
-    util.lmap('r', '<cmd>lua vim.lsp.buf.rename()<cr>', opts)
+  if client.server_capabilities.documentFormattingProvider then
+    vim.api.nvim_buf_create_user_command(0, 'Format', function()
+      require('user.lsp').format()
+    end, {})
+    vim.keymap.set('n', '<leader>F', function()
+      require('user.lsp').format()
+    end, opts)
   end
 
-  if caps.documentFormattingProvider then
-    util.bufcmd('Format', 'lua require("user.lsp").format_sync()')
-    util.lmap('F', '<cmd>Format<cr>', opts)
-    -- vim.cmd(
-    --   'autocmd BufWritePre <buffer> lua require("user.lsp").autoformat_sync()'
-    -- )
-  end
-
-  -- if not packer_plugins['trouble.nvim'] then
-  --   util.lmap('e', '<cmd>lua vim.lsp.diagnostic.set_loclist()<cr>', opts)
-  -- end
-
-  util.lmap(
-    'd',
-    '<cmd>lua require("user.lsp").show_position_diagnostics()<cr>',
-    opts
-  )
+  vim.keymap.set('n', '<leader>d', function()
+    require('user.lsp').show_position_diagnostics()
+  end, opts)
 end
 
--- auto-format the current buffer, but exclude certain cases
-M.autoformat_sync = function()
-  local bufnr = vim.api.nvim_get_current_buf()
-  local name = vim.api.nvim_buf_get_name(bufnr)
+-- format the current buffer, but exclude certain cases
+function M.format()
+  local name = vim.api.nvim_buf_get_name(0)
 
   -- don't autoformat ignored code
   local response = vim.fn.system({ 'git', 'is-ignored', name })
@@ -177,49 +121,11 @@ M.autoformat_sync = function()
     return
   end
 
-  M.format_sync()
-end
-
--- format the current buffer, handling the case where multiple formatters are
--- present
-M.format_sync = function()
-  local clients = vim.tbl_values(vim.lsp.buf_get_clients())
-  local formatters = vim.tbl_filter(function(client)
-    return client.server_capabilities.documentFormattingProvider
-  end, clients)
-
-  local formatter
-  if #formatters == 0 then
-    return
-  end
-
-  -- if there are multiple formatters, use the one that's not null-ls
-  if #formatters > 1 then
-    local non_null_ls = vim.tbl_filter(function(client)
-      return client.name ~= 'null-ls'
-    end, formatters)
-    formatter = non_null_ls[1]
-  else
-    formatter = formatters[1]
-  end
-
-  local params = vim.lsp.util.make_formatting_params(nil)
-  local bufnr = vim.api.nvim_get_current_buf()
-  local result, err =
-    formatter.request_sync('textDocument/formatting', params, 5000, bufnr)
-  if result and result.result then
-    vim.lsp.util.apply_text_edits(
-      result.result,
-      bufnr,
-      formatter.offset_encoding
-    )
-  elseif err then
-    vim.notify('vim.lsp.buf.formatting_sync: ' .. err, vim.log.levels.WARN)
-  end
+  vim.lsp.buf.format()
 end
 
 -- style the line diagnostics popup
-M.show_position_diagnostics = function()
+function M.show_position_diagnostics()
   vim.diagnostic.open_float(0, {
     scope = 'cursor',
     border = 'rounded',
@@ -230,7 +136,7 @@ M.show_position_diagnostics = function()
 end
 
 -- setup a server
-M.get_lsp_config = function(server)
+function M.get_lsp_config(server)
   -- default config for all servers
   local config = {}
 

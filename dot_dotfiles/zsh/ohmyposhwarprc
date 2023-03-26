@@ -1,0 +1,3 @@
+if (( $+commands[oh-my-posh] )); then
+  eval "$(oh-my-posh --init --shell zsh --config ~/.dotfiles/poshthemes/warp.omp.json)"
+fi

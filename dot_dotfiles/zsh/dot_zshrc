@@ -39,7 +39,7 @@ typeset -gU manpath
 # ----------------------------------------------------------------------------
 # Set the list of directories that man searches for manuals.
 if [ -e /etc/manpaths ]; then
-	while read line; do
+	while read line; do 
 		manpath+=$line
 	done < /etc/manpaths
 fi
@@ -275,7 +275,7 @@ setopt   MULTIOS                # Write to multiple descriptors
 setopt   PUSHD_IGNORE_DUPS      # Do not store duplicates in the stack
 setopt   PUSHD_SILENT           # Do not print the directory stack after pushd or popd
 setopt   PUSHD_TO_HOME          # Push to home directory when no argument is given
-unsetopt CLOBBER                # Don't overwrite existing files with > and >>
+#unsetopt CLOBBER                # Don't overwrite existing files with > and >>
 
 # Files and commands
 setopt   BRACE_CCL              # Allow brace character class list expansion
@@ -353,7 +353,7 @@ if (( $+commands[fzf] )); then
     export ESCDELAY=10
 
     # Use -1 for the bg color to specify 'none'
-    export FZF_DEFAULT_OPTS='--color=bg:-1,fg:7,bg+:-1,fg+:-1,hl:5,hl+:5,marker:18,gutter:-1,spinner:14,info:14'
+    export FZF_DEFAULT_OPTS='--color=bg:-1,fg:-1,bg+:0,fg+:-1,hl:5,hl+:5,marker:18,gutter:-1,spinner:14,info:14'
 
     if [[ -d $FZF_PATH/shell ]]; then
         source $FZF_PATH/shell/completion.zsh
@@ -392,9 +392,9 @@ if [[ "$TERM_PROGRAM" == "Apple_Terminal" ]]; then
     [[ -z $precmd_functions ]] && precmd_functions=()
     precmd_functions=($precmd_functions update_cwd)
 
-    if [[ "$TERM" == "xterm-256color" ]]; then
-        export TERM=xterm-256color-italic
-    fi
+    # if [[ "$TERM" == "xterm-256color" ]]; then
+    #     export TERM=xterm-256color-italic
+    # fi
 fi
 
 # Node
@@ -431,12 +431,6 @@ eval "$(direnv hook $SHELL)"
 bindkey '^f' vi-forward-word
 bindkey '^b' vi-forward-blank-word
 bindkey '^e' vi-end-of-line
-
-# ASDF
-# --------------------------------------------------------------------------
-if [[ -d "$XDG_CONFIG_HOME/asdf-direnv/zshrc" ]]; then
-    source "$XDG_CONFIG_HOME/asdf-direnv/zshrc"
-fi
 
 # Bun
 # --------------------------------------------------------------------------
@@ -494,5 +488,3 @@ ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(history-substring-search-up history-substring-se
 # Local config
 # --------------------------------------------------------------------------
 [[ -f $ZCONFDIR/zshrc ]] && source $ZCONFDIR/zshrc
-
-# vim:shiftwidth=4:tabstop=4:expandtab

@@ -10,6 +10,12 @@ local function autocmd(type, pattern, callback)
   })
 end
 
+-- open files in readonly if they're already open instead of printing a huge
+-- warning message
+autocmd('SwapExists', '*', function()
+  vim.v.swapchoice = 'o'
+end)
+
 -- make text files easier to work with
 autocmd('FileType', 'text,textile,markdown,html', function()
   util.text_mode()
@@ -17,8 +23,8 @@ end)
 
 -- better formatting for JavaScript
 autocmd('FileType', 'javascript', function()
-	vim.bo.formatprg = nil
-	vim.bo.formatexpr = nil
+  vim.bo.formatprg = nil
+  vim.bo.formatexpr = nil
 end)
 
 autocmd('BufEnter', '*.*', function()
@@ -56,13 +62,19 @@ end)
 
 -- close qf panes and help tabs with 'q'
 autocmd('FileType', 'qf,fugitiveblame,lspinfo,startuptime', function()
-  vim.keymap.set('', 'q', '<cmd>bd<CR>')
+  vim.keymap.set('', 'q', function()
+    vim.api.nvim_buf_delete(0, {})
+  end, { buffer = true })
 end)
 autocmd('FileType', 'help', function()
-  vim.keymap.set('', 'q', '<cmd>tabclose<CR>')
+  vim.keymap.set('', 'q', function()
+    vim.api.nvim_win_close(0, true)
+  end, { buffer = true })
 end)
 autocmd('BufEnter', 'output:///info', function()
-  vim.keymap.set('', 'q', '<cmd>bd<CR>')
+  vim.keymap.set('', 'q', function()
+    vim.api.nvim_buf_delete(0, {})
+  end, { buffer = true })
 end)
 
 -- auto-set quickfix height
@@ -107,41 +119,13 @@ autoft('intern{-.}*.json', 'jsonc')
 autoft('*.textile', 'textile')
 autoft('*.{frag,vert}', 'glsl')
 
--- set colorscheme after TUI has loaded
-autocmd('VimEnter', '*', function()
-  local timer = vim.loop.new_timer()
-  timer:start(
-    0,
-    0,
-    vim.schedule_wrap(function()
-      vim.api.nvim_command('colorscheme wezterm')
-    end)
-  )
-end)
-
 -- improve handling of very large files
-autocmd({ 'BufReadPre', 'FileReadPre' }, '*', function()
-  local file = vim.fn.expand('<afile>')
-  local size = vim.fn.getfsize(file)
-
-  -- "large" is > 10MB
-  if size > 10000000 then
-    print('Using large file mode for ' .. file)
-
-    if vim.fn.exists(':TSBufDisable') then
-      vim.cmd('TSBufDisable highlight indent illuminate matchup')
-    end
-
-    -- if vim.fn.exists(':IlluminatePauseBuf') then
-    --   vim.cmd('IlluminatePauseBuf')
-    -- end
-
-    vim.b.lsp_disable = true
-    vim.wo.foldmethod = 'manual'
-    vim.cmd('syntax off')
-    vim.cmd('filetype off')
+autocmd({ 'BufReadPost', 'FileReadPost' }, '*', function()
+  if require('user.util').is_large_file() then
+    vim.bo.filetype = nil
     vim.bo.swapfile = false
     vim.bo.undofile = false
+    vim.wo.foldmethod = 'manual'
   end
 end)
 

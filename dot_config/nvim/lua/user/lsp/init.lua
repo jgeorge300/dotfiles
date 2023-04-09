@@ -3,20 +3,77 @@ local modbase = ...
 -- Give LspInfo window a border
 require('lspconfig.ui.windows').default_options.border = 'rounded'
 
--- load the config for a given client, if it exists
-local function load_client_config(server_name)
-  local status, client_config =
-    pcall(require, modbase .. '.servers.' .. server_name)
-  if not status or type(client_config) ~= 'table' then
-    return {}
-  end
-  return client_config
-end
-
 local M = {}
 
-function M.config()
-  -- UI
+---@alias AttachFunction function(client: table, bufnr: number): nil
+
+-- configure a client when it's attached to a buffer
+---@param server_on_attach AttachFunction?
+M.create_on_attach = function(server_on_attach)
+  ---@param client table
+  ---@param bufnr number
+  return function(client, bufnr)
+    if require('user.util').is_large_file(bufnr) then
+      return
+    end
+
+    if server_on_attach then
+      server_on_attach(client, bufnr)
+    end
+
+    local opts = { buffer = bufnr }
+
+    -- navic can only attach to one client per buffer, so don't attach to
+    -- clients that don't supply useful info
+    if client.server_capabilities.documentSymbolProvider then
+      require('nvim-navic').attach(client, bufnr)
+    end
+
+    -- add a jump to definition keymap; this overrides the default C-] keymap
+    -- when an LSP is attached to a buffer
+    if client.server_capabilities.definitionProvider then
+      vim.keymap.set('n', '<C-]>', function()
+        vim.lsp.buf.definition()
+      end, opts)
+    end
+
+    -- add a hover info keymap; this overrides the default K keymap when an LSP
+    -- is attached to a buffer
+    if client.server_capabilities.hoverProvider then
+      vim.keymap.set('', 'K', function()
+        vim.lsp.buf.hover()
+      end, opts)
+    end
+
+    -- add a rename keymap
+    if client.server_capabilities.renameProvider then
+      vim.keymap.set('n', '<leader>r', function()
+        vim.lsp.buf.rename()
+      end, opts)
+    end
+
+    -- add a :Format command and keymap
+    if client.server_capabilities.documentFormattingProvider then
+      vim.api.nvim_buf_create_user_command(0, 'Format', function()
+        vim.lsp.buf.format()
+      end, {})
+      vim.keymap.set('n', '<leader>F', function()
+        vim.lsp.buf.format()
+      end, opts)
+    end
+
+    -- keymap to show error diagnostic popup
+    vim.keymap.set('n', '<leader>d', function()
+      vim.diagnostic.open_float({
+        border = 'rounded',
+        focusable = false,
+      })
+    end, opts)
+  end
+end
+
+M.config = function()
+  -- configure diagnostic signs
   vim.fn.sign_define(
     'DiagnosticSignError',
     { text = '', texthl = 'DiagnosticSignError' }
@@ -34,17 +91,16 @@ function M.config()
     { text = '', texthl = 'DiagnosticSignHint' }
   )
 
-  vim.lsp.handlers['textDocument/publishDiagnostics'] = vim.lsp.with(
-    vim.lsp.handlers['textDocument/publishDiagnostics'],
-    { virtual_text = true }
-  )
-
+  -- rounded border for hover popups
   vim.lsp.handlers['textDocument/hover'] =
     vim.lsp.with(vim.lsp.handlers.hover, { border = 'rounded' })
 
+  -- rounded border for signature popups
   vim.lsp.handlers['textDocument/signatureHelp'] =
     vim.lsp.with(vim.lsp.handlers.signature_help, { border = 'rounded' })
 
+  -- when an lsp returns multiple "goto definition" results, only keep the
+  -- first one
   local origTextDocDef = vim.lsp.handlers['textDocument/definition']
   vim.lsp.handlers['textDocument/definition'] = function(
     err,
@@ -52,7 +108,6 @@ function M.config()
     ctx,
     config
   )
-    -- If tsserver returns multiple results, only keep the first one
     if result ~= nil and #result > 1 then
       result = { result[1] }
     end
@@ -60,107 +115,26 @@ function M.config()
   end
 end
 
--- configure a client when it's attached to a buffer
-function M.on_attach(client, bufnr)
-  local opts = { buffer = bufnr }
-
-  -- navic can only attach to one client per buffer, so don't attach to clients
-  -- that don't supply useful info
-  if client.server_capabilities.documentSymbolProvider then
-    require('nvim-navic').attach(client, bufnr)
-  end
-
-  if client.server_capabilities.definitionProvider then
-    vim.keymap.set('n', '<C-]>', function()
-      vim.lsp.buf.definition()
-    end, opts)
-  end
-
-  if client.server_capabilities.hoverProvider then
-    vim.keymap.set('', 'K', function()
-      vim.lsp.buf.hover()
-    end, opts)
-  end
-
-  if client.server_capabilities.renameProvider then
-    vim.keymap.set('n', '<leader>r', function()
-      vim.lsp.buf.rename()
-    end, opts)
-  end
-
-  if client.server_capabilities.documentFormattingProvider then
-    vim.api.nvim_buf_create_user_command(0, 'Format', function()
-      require('user.lsp').format()
-    end, {})
-    vim.keymap.set('n', '<leader>F', function()
-      require('user.lsp').format()
-    end, opts)
-  end
-
-  vim.keymap.set('n', '<leader>d', function()
-    require('user.lsp').show_position_diagnostics()
-  end, opts)
-end
-
--- format the current buffer, but exclude certain cases
-function M.format()
-  local name = vim.api.nvim_buf_get_name(0)
-
-  -- don't autoformat ignored code
-  local response = vim.fn.system({ 'git', 'is-ignored', name })
-  if response == '1' then
-    return
-  end
-
-  -- don't autoformat library code
-  if
-    name:find('/node_modules/')
-    or name:find('/__pypackages__/')
-    or name:find('/site_packages/')
-  then
-    return
-  end
-
-  vim.lsp.buf.format()
-end
-
--- style the line diagnostics popup
-function M.show_position_diagnostics()
-  vim.diagnostic.open_float(0, {
-    scope = 'cursor',
-    border = 'rounded',
-    max_width = 80,
-    show_header = false,
-    focusable = false,
-  })
-end
-
 -- setup a server
-function M.get_lsp_config(server)
-  -- default config for all servers
-  local config = {}
-
-  -- add server-specific config if applicable
-  local client_config = load_client_config(server)
-  if client_config.config then
-    config = vim.tbl_deep_extend('force', config, client_config.config)
+---@param server_name string
+M.setup = function(server_name)
+  local status, config = pcall(require, modbase .. '.servers.' .. server_name)
+  if not status or type(config) ~= 'table' then
+    config = {}
   end
 
-  if config.on_attach then
-    local config_on_attach = config.on_attach
-    config.on_attach = function(client, bufnr)
-      config_on_attach(client, bufnr)
-      M.on_attach(client, bufnr)
-    end
-  else
-    config.on_attach = M.on_attach
-  end
+  config.on_attach = M.create_on_attach(config.on_attach)
 
   -- add cmp capabilities
-  local cmp = require('cmp_nvim_lsp')
-  config.capabilities = cmp.default_capabilities()
+  local cmp_caps = require('cmp_nvim_lsp').default_capabilities()
+  if config.capabilities then
+    config.capabilities =
+      vim.tbl_deep_extend('keep', config.capabilities, cmp_caps)
+  else
+    config.capabilities = cmp_caps
+  end
 
-  return config
+  require('lspconfig')[server_name].setup(config)
 end
 
 return M

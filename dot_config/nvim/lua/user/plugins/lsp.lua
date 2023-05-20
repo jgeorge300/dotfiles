@@ -7,16 +7,33 @@ return {
     end,
   },
 
-  -- Helpers for editing neovim lua; must be setup before lspconfig
+  -- LSP settings manager; must be setup **before** any language servers are
+  -- configured
+  {
+    'folke/neoconf.nvim',
+    config = true,
+    priority = 100,
+  },
+
+  -- helpers for editing neovim lua; must be setup **before** any language
+  -- servers are configured
   {
     'folke/neodev.nvim',
-
-    -- ensure this loads before lsp
     priority = 100,
+    config = true,
+  },
 
-    config = function()
-      require('neodev').setup({})
-    end,
+  -- language server installer; must be setup before null-ls to ensure
+  -- mason-managed tools are available in the path
+  {
+    'williamboman/mason.nvim',
+    priority = 100,
+    build = ':MasonUpdate',
+    opts = {
+      ui = {
+        border = 'rounded',
+      },
+    },
   },
 
   -- basic language server support
@@ -25,10 +42,8 @@ return {
   -- custom language servers
   {
     'jose-elias-alvarez/null-ls.nvim',
-
     dependencies = 'nvim-lua/plenary.nvim',
-
-    config = function()
+    opts = function()
       local null_ls = require('null-ls')
       local helpers = require('null-ls.helpers')
 
@@ -140,33 +155,19 @@ return {
         table.insert(sources, tidy_xml_source)
       end
 
-      null_ls.setup({
+      return {
         sources = sources,
         on_attach = function(client, bufnr)
-          print('null_ls attaching with buf ' .. vim.inspect(bufnr))
           local oa = require('user.lsp').create_on_attach()
           oa(client, bufnr)
         end,
-      })
-    end,
-  },
-
-  -- language server installer
-  {
-    'williamboman/mason.nvim',
-    config = function()
-      require('mason').setup({
-        ui = {
-          border = 'rounded',
-        },
-      })
+      }
     end,
   },
 
   -- language server manager
   {
     'williamboman/mason-lspconfig.nvim',
-
     config = function()
       require('mason-lspconfig').setup()
       require('user.lsp').config()
@@ -192,6 +193,7 @@ return {
   {
     'https://git.sr.ht/~whynothugo/lsp_lines.nvim',
     config = true,
+    enabled = false,
     opts = function()
       vim.diagnostic.config({
         virtual_text = false,
@@ -214,8 +216,42 @@ return {
       filetypes = {
         ['*'] = function()
           return not require('user.util').is_large_file(0)
-        end
-      }
+        end,
+      },
     },
+  },
+
+  {
+    'SmiteshP/nvim-navbuddy',
+    dependencies = {
+      'neovim/nvim-lspconfig',
+      'SmiteshP/nvim-navic',
+      'MunifTanjim/nui.nvim',
+    },
+    opts = function()
+      vim.keymap.set('n', '<leader>s', function()
+        if vim.bo.filetype ~= 'Navbuddy' then
+          require('nvim-navbuddy').open()
+        end
+      end)
+      return {
+        lsp = { auto_attach = true },
+        window = {
+          border = 'rounded',
+          size = '80%',
+          sections = {
+            left = {
+              size = '33%',
+            },
+            mid = {
+              size = '34%',
+            },
+            right = {
+              size = '33%',
+            },
+          },
+        },
+      }
+    end,
   },
 }

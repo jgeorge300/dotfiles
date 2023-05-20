@@ -27,16 +27,16 @@ return {
   -- git utilities
   'tpope/vim-fugitive',
 
-  -- support for repeating mapped commands
-  'tpope/vim-repeat',
-
   -- for manipulating parens and such
   'tpope/vim-surround',
+
+  -- for repeating surround commands
+  'tpope/vim-repeat',
 
   -- show semantic file location (e.g., what function you're in)
   {
     'SmiteshP/nvim-navic',
-    dependencies = 'nvim-treesitter',
+    dependencies = 'nvim-treesitter/nvim-treesitter',
     config = true,
   },
 
@@ -104,7 +104,7 @@ return {
   {
     dir = '/Users/jason/.config/nvim/lua/undotree-nvim',
     main = 'undotree-nvim',
-    depends = 'ibhagwan/fzf-lua',
+    dependencies = 'ibhagwan/fzf-lua',
     config = true,
     opts = function()
       vim.keymap.set('n', '<leader>u', function()

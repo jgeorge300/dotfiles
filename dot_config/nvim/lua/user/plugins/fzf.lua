@@ -27,7 +27,7 @@ return {
     vim.keymap.set('n', '<leader>b', function()
       require('fzf-lua').buffers()
     end)
-    vim.keymap.set('n', '<leader>th', function()
+    vim.keymap.set('n', '<leader>h', function()
       require('fzf-lua').help_tags()
     end)
     vim.keymap.set('n', '<leader>lr', function()

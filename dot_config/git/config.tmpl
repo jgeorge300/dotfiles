@@ -92,8 +92,8 @@
 	main-view-date = relative-compact
 
 [tig "color"]
-	default = color15 default normal
-	cursor = default color8 normal
+	default = default default normal
+	cursor = color0 color7 normal
 	diff-del = color1 default normal
 	diff-add = color2 default normal
 	title-focus = color0 color4 normal
@@ -105,6 +105,8 @@
 	status = S !?git stash save --keep-index %(prompt)
 	status = + !git commit --amend
 	main = = !git edit-commit %(commit)
+	main = R !git rebase -i %(commit)^
+	diff = R !git rebase -i %(commit)^
 
 [url "git@github.com:"]
 	insteadOf = gh:
@@ -135,6 +137,7 @@
 
 [submodule]
 	fetchJobs = 4
+	recurse = true
 
 [stash]
 	showPatch = true
@@ -151,13 +154,22 @@
 [pull]
 	rebase = true
 
+[push]
+	recurseSubmodules = no
+
 [init]
 	defaultBranch = main
 
+[include]
+	path = ~/.config/local/git/config
+
+{{- if eq .chezmoi.os "darwin" }}
+
 [difftool "sourcetree"]
-	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
-	path = 
+	cmd = /Applications/DiffMerge.app/Contents/MacOS/DiffMerge --nosplash \"$LOCAL\" \"$REMOTE\"
+	path =
+{{- end }}
 
 [user]
-	email = joegeorge01@gmail.com
+	email = {{ .email }}
 	name = Joe George

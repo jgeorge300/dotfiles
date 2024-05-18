@@ -1,5 +1,8 @@
 local modbase = ...
 
+-- Disable log by default
+vim.lsp.set_log_level('error')
+
 -- Give LspInfo window a border
 require('lspconfig.ui.windows').default_options.border = 'rounded'
 
@@ -95,12 +98,6 @@ M.create_on_attach = function(server_on_attach)
 
     local opts = { buffer = bufnr }
 
-    -- navic can only attach to one client per buffer, so don't attach to
-    -- clients that don't supply useful info
-    if client.server_capabilities.documentSymbolProvider then
-      require('nvim-navic').attach(client, bufnr)
-    end
-
     -- add a jump to definition keymap; this overrides the default C-] keymap
     -- when an LSP is attached to a buffer
     if client.server_capabilities.definitionProvider then
@@ -126,24 +123,22 @@ M.create_on_attach = function(server_on_attach)
 
     -- add a :Format command and keymap
     if client.server_capabilities.documentFormattingProvider then
-      vim.api.nvim_buf_create_user_command(0, 'Format', function()
-        vim.lsp.buf.format()
-      end, {})
-
-      vim.keymap.set('n', '<leader>F', function()
-        vim.lsp.buf.format()
-      end, opts)
-
       vim.api.nvim_buf_create_user_command(0, 'OrganizeImports', function()
         organize_imports(0)
       end, {})
+    end
+
+    if client.server_capabilities.documentSymbolProvider then
+      local ok, navic = pcall(require, 'nvim-navic')
+      if ok then
+        navic.attach(client, bufnr)
+      end
     end
 
     -- keymap to show error diagnostic popup
     vim.keymap.set('n', '<leader>d', function()
       vim.diagnostic.open_float({
         border = 'rounded',
-        focusable = false,
       })
     end, opts)
   end
@@ -204,7 +199,7 @@ M.setup = function(server_name)
 
   -- add cmp capabilities
   local cmp_caps = {}
-  local ok, cmp_nvim_lsp = pcall(require, 'cmp_nvim_lsp');
+  local ok, cmp_nvim_lsp = pcall(require, 'cmp_nvim_lsp')
   if ok then
     cmp_caps = cmp_nvim_lsp.default_capabilities()
   end

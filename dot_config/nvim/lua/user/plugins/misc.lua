@@ -8,38 +8,6 @@ return {
     end,
   },
 
-  -- preserve layout when closing buffers; used for <leader>k
-  {
-    'famiu/bufdelete.nvim',
-    config = function()
-      vim.keymap.set('n', '<leader>k', function()
-        require('bufdelete').bufdelete(0)
-      end)
-      vim.keymap.set('n', '<leader>K', function()
-        require('bufdelete').bufdelete(0, true)
-      end)
-    end,
-  },
-
-  -- gc for commenting code blocks
-  'tpope/vim-commentary',
-
-  -- git utilities
-  'tpope/vim-fugitive',
-
-  -- for manipulating parens and such
-  'tpope/vim-surround',
-
-  -- for repeating surround commands
-  'tpope/vim-repeat',
-
-  -- show semantic file location (e.g., what function you're in)
-  {
-    'SmiteshP/nvim-navic',
-    dependencies = 'nvim-treesitter/nvim-treesitter',
-    config = true,
-  },
-
   -- JSON schemas
   'b0o/schemastore.nvim',
 
@@ -68,16 +36,17 @@ return {
     end,
   },
 
-  -- Autosave files
+  -- Git tools
+  'tpope/vim-fugitive',
+
+  -- Auto-set indentation
   {
-    'Pocco81/auto-save.nvim',
+    'tpope/vim-sleuth',
+
     config = function()
-      require('auto-save').setup({
-        condition = function(buf)
-          return vim.api.nvim_buf_is_valid(buf)
-            and vim.bo[buf].filetype == 'rust'
-        end,
-      })
+      -- Disable sleuth for markdown files as it slows the load time
+      -- significantly
+      vim.g.sleuth_markdown_heuristics = 0
     end,
   },
 
@@ -100,11 +69,11 @@ return {
     config = true,
   },
 
-  -- fzf-based undotree
+  -- undotree
   {
     dir = '/Users/jason/.config/nvim/lua/undotree-nvim',
     main = 'undotree-nvim',
-    dependencies = 'ibhagwan/fzf-lua',
+    dependencies = 'echasnovski/mini.nvim',
     config = true,
     opts = function()
       vim.keymap.set('n', '<leader>u', function()
@@ -113,6 +82,4 @@ return {
       return {}
     end,
   },
-
-  'mbbill/undotree',
 }

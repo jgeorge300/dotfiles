@@ -46,8 +46,9 @@ alias ga='git a'
 alias gb='git b'
 alias gba='git ba'
 alias gbd='git branch -D'
-alias gbk='git killbranch'
 alias gbdo='git push -d origin' 
+alias gbk='git killbranch'
+alias gbl='git local-branches'
 alias gbm='git mybranches' 
 alias gbf='git bf'
 alias gc='git c'
@@ -111,17 +112,6 @@ alias ts='tig status'
 # ssh in interactive shells
 # alias ssh=themed_ssh
 
-# vim
-if (( $+commands[nvim] )); then
-    if [[ -n $WEZTERM_PANE ]]; then
-        alias vi="nvim --listen /tmp/nvim-wt$WEZTERM_PANE"
-    else
-        alias vi=nvim
-    fi
-elif (( $+commands[vim] )); then
-    alias vi=vim
-fi
-
 # tmux
 alias tls='tmux list-sessions'
 alias tas='tmux attach -t'
@@ -168,10 +158,10 @@ alias npmv="npm --loglevel error"
 alias npmr="npm --registry=https://registry.npmjs.org"
 alias px="pnpm exec"
 
-alias ha='TERM=xterm-256color ssh root@homeassistant.local'
-alias halog='TERM=xterm-256color ssh root@homeassistant.local tail -F /config/home-assistant.log | bat --paging=never -l halog'
-alias adlog='TERM=xterm-256color ssh root@homeassistant.local tail -F /config/appdaemon/logs/main.log | bat --paging=never -l adlog'
-alias aderrlog='TERM=xterm-256color ssh root@homeassistant.local tail -F /config/appdaemon/logs/error.log'
+alias ha='TERM=xterm-256color ssh hass'
+alias halog='TERM=xterm-256color ssh hass tail -F /config/home-assistant.log | bat --paging=never -l halog'
+alias adlog='TERM=xterm-256color ssh hass tail -F /config/appdaemon/logs/main.log | bat --paging=never -l adlog'
+alias aderrlog='TERM=xterm-256color ssh hass tail -F /config/appdaemon/logs/error.log'
 
 alias ls='ls --color -F'
 alias l='ls -1A'         # Lists in one column, hidden files
@@ -194,4 +184,17 @@ fi
 # Better cat
 if (( $+commands[bat] )); then
     alias cat=bat
+fi
+
+# Better ls
+if (( $+commands[eza] )); then
+    alias ls='eza -F'
+    alias lt='ls -T'
+    alias la='ls -a'
+    alias l='ls -1a'
+    alias lg='ll --git'
+fi
+
+if (( $+commands[docker] )); then
+    alias dc='docker compose'
 fi

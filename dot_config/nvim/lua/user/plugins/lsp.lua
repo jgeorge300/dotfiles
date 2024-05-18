@@ -36,135 +36,6 @@ return {
     },
   },
 
-  -- basic language server support
-  'neovim/nvim-lspconfig',
-
-  -- custom language servers
-  {
-    'jose-elias-alvarez/null-ls.nvim',
-    dependencies = 'nvim-lua/plenary.nvim',
-    opts = function()
-      local null_ls = require('null-ls')
-      local helpers = require('null-ls.helpers')
-
-      local htmlhint_source = {
-        method = null_ls.methods.DIAGNOSTICS,
-        filetypes = { 'html' },
-        generator = helpers.generator_factory({
-          command = 'htmlhint',
-          args = { '--format', 'json', '--nocolor', 'stdin' },
-          format = 'json',
-          to_stdin = true,
-          check_exit_code = { 0, 1 },
-          on_output = function(params)
-            if params.output == nil then
-              return nil
-            end
-
-            local results = {}
-
-            for _, err in ipairs(params.output) do
-              for _, msg in ipairs(err.messages) do
-                local severity
-                if msg.type == 'error' then
-                  severity = 1
-                else
-                  severity = 3
-                end
-
-                table.insert(results, {
-                  row = msg.line,
-                  col = msg.col,
-                  end_col = msg.col + #msg.evidence,
-                  message = msg.message .. ' (' .. msg.rule.id .. ')',
-                  severity = severity,
-                })
-              end
-            end
-
-            return results
-          end,
-        }),
-      }
-
-      local tidy_xml_source = {
-        name = 'tidy_xml',
-        method = null_ls.methods.FORMATTING,
-        filetypes = { 'xml', 'svg' },
-        generator = helpers.formatter_factory({
-          command = 'tidy',
-          args = {
-            '--tidy-mark',
-            'no',
-            '-quiet',
-            '-indent',
-            '--wrap',
-            '80',
-            '-xml',
-            '--indent-attributes',
-            'yes',
-            '--indent-spaces',
-            '2',
-          },
-          to_stdin = true,
-        }),
-      }
-
-      -- run null_ls.config to make null-ls available through lspconfig
-      local sources = {}
-
-      if vim.fn.executable('black') ~= 0 then
-        table.insert(sources, null_ls.builtins.formatting.black)
-      end
-
-      if vim.fn.executable('swiftformat') ~= 0 then
-        table.insert(sources, null_ls.builtins.formatting.swiftformat)
-      end
-
-      if vim.fn.executable('prettier') ~= 0 then
-        table.insert(
-          sources,
-          null_ls.builtins.formatting.prettier.with({
-            filetypes = vim.list_extend(
-              { 'php' },
-              null_ls.builtins.formatting.prettier.filetypes
-            ),
-          })
-        )
-      end
-
-      if vim.fn.executable('stylua') ~= 0 then
-        table.insert(
-          sources,
-          null_ls.builtins.formatting.stylua.with({
-            args = {
-              '--stdin-filepath',
-              '$FILENAME',
-              '--search-parent-directories',
-              '-',
-            },
-          })
-        )
-      end
-
-      if vim.fn.executable('htmlhint') ~= 0 then
-        table.insert(sources, htmlhint_source)
-      end
-
-      if vim.fn.executable('tidy') ~= 0 then
-        table.insert(sources, tidy_xml_source)
-      end
-
-      return {
-        sources = sources,
-        on_attach = function(client, bufnr)
-          local oa = require('user.lsp').create_on_attach()
-          oa(client, bufnr)
-        end,
-      }
-    end,
-  },
-
   -- language server manager
   {
     'williamboman/mason-lspconfig.nvim',
@@ -178,15 +49,59 @@ return {
           require('user.lsp').setup(server_name)
         end,
       })
+
+      -- manually setup sourcekit
+      if vim.fn.executable('sourcekit-lsp') ~= 0 then
+        require('user.lsp').setup('sourcekit')
+      end
+
+      vim.keymap.set('n', '<leader>a', function()
+        vim.lsp.buf.code_action()
+      end)
     end,
   },
 
   -- diagnostics display
   {
     'folke/trouble.nvim',
+    branch = 'dev',
     event = 'BufEnter',
     dependencies = 'nvim-tree/nvim-web-devicons',
-    config = true,
+    keys = {
+      {
+        '<leader>td',
+        '<cmd>Trouble diagnostics toggle<cr>',
+        desc = 'Diagnostics (Trouble)',
+      },
+      {
+        '<leader>tD',
+        '<cmd>Trouble diagnostics toggle filter.buf=0<cr>',
+        desc = 'Buffer Diagnostics (Trouble)',
+      },
+      {
+        '<leader>ts',
+        '<cmd>Trouble symbols toggle focus=false<cr>',
+        desc = 'Symbols (Trouble)',
+      },
+      {
+        '<leader>tl',
+        '<cmd>Trouble lsp toggle focus=false win.position=right<cr>',
+        desc = 'LSP Definitions / references / ... (Trouble)',
+      },
+      {
+        '<leader>tL',
+        '<cmd>Trouble loclist toggle<cr>',
+        desc = 'Location List (Trouble)',
+      },
+      {
+        '<leader>tQ',
+        '<cmd>Trouble qflist toggle<cr>',
+        desc = 'Quickfix List (Trouble)',
+      },
+    },
+    opts = {
+      focus = true,
+    },
   },
 
   -- virtual text diagnostics
@@ -206,6 +121,9 @@ return {
   -- copilot integration
   {
     'zbirenbaum/copilot.lua',
+    enabled = function()
+      return vim.fn.executable('node') == 1
+    end,
     opts = {
       event = 'InsertEnter',
       suggestion = {
@@ -222,36 +140,52 @@ return {
   },
 
   {
-    'SmiteshP/nvim-navbuddy',
+    'SmiteshP/nvim-navic',
+    config = true,
+  },
+
+  {
+    'utilyre/barbecue.nvim',
+    name = 'barbecue',
+    version = '*',
     dependencies = {
-      'neovim/nvim-lspconfig',
       'SmiteshP/nvim-navic',
-      'MunifTanjim/nui.nvim',
+      'nvim-tree/nvim-web-devicons',
     },
-    opts = function()
-      vim.keymap.set('n', '<leader>s', function()
-        if vim.bo.filetype ~= 'Navbuddy' then
-          require('nvim-navbuddy').open()
-        end
-      end)
-      return {
-        lsp = { auto_attach = true },
-        window = {
-          border = 'rounded',
-          size = '80%',
-          sections = {
-            left = {
-              size = '33%',
-            },
-            mid = {
-              size = '34%',
-            },
-            right = {
-              size = '33%',
-            },
-          },
+    config = function()
+      local colors = require('user.themes.wezterm').load_colors()
+
+      -- triggers CursorHold event faster
+      vim.opt.updatetime = 200
+
+      require('barbecue').setup({
+        -- prevent barbecue from updating itself automatically
+        create_autocmd = false,
+
+        exclude_filetypes = { "netrw", "toggleterm", "starter" },
+
+        theme = {
+          normal = { fg = colors.fg_0, bg = colors.bg_1 },
         },
-      }
+      })
+
+      vim.api.nvim_create_autocmd({
+        'WinScrolled', -- or WinResized on NVIM-v0.9 and higher
+        'BufWinEnter',
+        'CursorHold',
+        'InsertLeave',
+
+        -- include this if you have set `show_modified` to `true`
+        'BufModifiedSet',
+      }, {
+        group = vim.api.nvim_create_augroup('barbecue.updater', {}),
+        callback = function()
+          require('barbecue.ui').update()
+        end,
+      })
+
+      -- hide barbecue by default
+      require('barbecue.ui').toggle(false)
     end,
   },
 }

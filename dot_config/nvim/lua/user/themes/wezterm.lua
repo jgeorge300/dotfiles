@@ -328,6 +328,7 @@ local function apply_theme(c)
   hi('diffOldFile', { fg = c.br_red })
   hi('diffNewFile', { fg = c.br_green })
   hi('diffFile', { fg = c.blue })
+  hi('diffLine', { fg = c.yellow })
 
   hilink('TSConstBuiltin', 'Constant')
   hilink('TSConstMacro', 'Constant')
@@ -340,6 +341,17 @@ local function apply_theme(c)
   hilink('@string', 'String')
   hilink('@variable', 'Identifier')
   hilink('@keyword', 'Keyword')
+
+  hi('@markup.strong', { bold = true })
+  hi('@markup.emphasis', { bold = true, italic = true })
+  hi('@markup.italic', { italic = true })
+  hi('@markup.underline', { underline = true })
+  hi('@markup.strike', { strikethrough = true })
+  hi('@markup.link.label', { fg = c.blue })
+  hilink('@markup.link', 'Underlined')
+  hilink('@markup.list', 'Delimiter')
+  hilink('@markup.raw', 'String')
+  hilink('@markup.heading', 'Title')
 
   hilink('typescriptBraces', 'Delimiter')
   hilink('typescriptParens', 'Delimiter')
@@ -360,6 +372,20 @@ local function apply_theme(c)
   hi('GitSignsAdd', { fg = c.green, bg = sign_col_bg })
   hi('GitSignsChange', { fg = c.yellow, bg = sign_col_bg })
   hi('GitSignsDelete', { fg = c.red, bg = sign_col_bg })
+
+  hi('MiniStatuslineModeNormal', { fg = c.bg_0, bg = c.blue })
+  hi('MiniStatuslineModeInsert', { fg = c.bg_0, bg = c.green })
+  hi('MiniStatuslineModeCommand', { fg = c.bg_0, bg = c.orange })
+  hi('MiniStatuslineModeVisual', { fg = c.bg_0, bg = c.violet })
+  hi('MiniStatuslineDevInfo', { bg = c.bg_2 })
+  hi('MiniStatuslineFilename', { bg = c.bg_1 })
+  hi('MiniStatuslineError', { fg = error, bg = c.bg_2 })
+  hi('MiniStatuslineWarning', { fg = warn, bg = c.bg_2 })
+  hi('MiniStatuslineInfo', { fg = info, bg = c.bg_2 })
+  hi('MiniStatuslineHint', { fg = hint, bg = c.bg_2 })
+  hi('MiniStarterCurrent', { bg = c.bg_2 })
+
+  hi('MiniJump2dSpot', { bg = c.bg_1, fg = c.fg_1, bold = true })
 
   hilink('LspDiagnosticsDefaultHint', 'DiagnosticHint')
   hilink('LspDiagnosticsDefaultInformation', 'DiagnosticInfo')
@@ -420,6 +446,15 @@ function M.apply()
   apply_theme(colors)
 
   vim.api.nvim_exec_autocmds('ColorScheme', {})
+
+  -- reload the theme if the background changes
+  vim.api.nvim_create_autocmd('OptionSet', {
+    pattern = 'background',
+    callback = function()
+      local colors = M.load_colors()
+      apply_theme(colors)
+    end
+  })
 end
 
 ---@return Palette | CtermPalette
@@ -429,7 +464,10 @@ function M.load_colors()
     local ok, colors_text = pcall(vim.fn.readfile, colors_file)
 
     if not ok then
-      return palettes.white
+      if vim.go.background == 'light' then
+        return palettes.white
+      end
+      return palettes.black
     else
       local scheme = vim.fn.json_decode(colors_text)
       ---@cast scheme table

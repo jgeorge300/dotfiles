@@ -168,11 +168,8 @@ if [[ -d $HOMEBREW_BASE/lib/ruby/gems/3.0.0 ]]; then
 fi
 
 # Rust
-if [[ -d $HOME/.cargo/bin ]]; then
-	path=(
-		$HOME/.cargo/bin
-		$path
-	)
+if [[ -f $HOME/.cargo/env ]]; then
+	. $HOME/.cargo/env
 fi
 
 # sqlite3
@@ -258,14 +255,18 @@ if [[ -d $HOME/.bun/bin ]]; then
 	)
 fi
 
-# rtx
-if [[ -d $HOME/.local/share/rtx/bin ]]; then
+# ripgrep
+if (( $+commands[rg] )); then
+	export RIPGREP_CONFIG_PATH=$XDG_CONFIG_HOME/ripgrep
+fi
+
+# mise
+if [[ -d $HOME/.local/share/mise/bin ]]; then
 	path=(
-		$HOME/.local/share/rtx/bin
+		$HOME/.local/share/mise/bin
 		$path
 	)
 fi
-
 
 # Add user dirs to path
 # --------------------------------------------------------------------------
@@ -281,11 +282,6 @@ if [[ -d $GOPATH ]]; then
 	path=($GOPATH/bin $path)
 fi
 
-# From cargo install
-if [[ -d $HOME/.cargo/bin ]]; then
-	path=($HOME/.cargo/bin $path)
-fi
-
 # Local apps
 if [[ -d $HOME/bin ]]; then
 	path=($HOME/bin $path)
@@ -299,8 +295,5 @@ fi
 # Local config
 # --------------------------------------------------------------------------
 [[ -f $ZCONFDIR/zshenv ]] && source $ZCONFDIR/zshenv
-
-# Disable global zprofile, which messes with the path
-unsetopt GLOBAL_RCS
 
 # vim:shiftwidth=4:tabstop=4:noexpandtab

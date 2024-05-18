@@ -17,40 +17,37 @@ return {
             return
           end
           require('colorizer').attach_to_buffer(bufnr)
-        end
+        end,
       })
     end,
   },
 
-  -- Better UI
-  'stevearc/dressing.nvim',
-
-  -- Popup notifications
   {
-    'rcarriga/nvim-notify',
-
-    opts = function()
-      vim.notify = require('notify')
-      if vim.go.termguicolors then
-        return {
-          timeout = 1000,
-        }
-      end
-
-      return {
-        timeout = 3000,
-        stages = 'static',
-      }
-    end,
+    'stevearc/dressing.nvim',
+    opts = {
+      select = {
+        enabled = false,
+      },
+    },
   },
 
-  -- highlight current word
   {
-    'tzachar/local-highlight.nvim',
+    'JManch/sunset.nvim',
+    lazy = false,
+    enabled = function()
+      local locfile = vim.fn.expand('~/.config/location.json')
+      return vim.fn.filereadable(locfile)
+    end,
     opts = function()
-      vim.api.nvim_set_hl(0, 'LocalHighlight', { link = 'CursorLine' })
+      local locfile = vim.fn.expand('~/.config/location.json')
+      if vim.fn.filereadable(locfile) == 0 then
+        return
+      end
+      local location = vim.fn.json_decode(vim.fn.join(vim.fn.readfile(locfile)))
+
       return {
-        cw_hlgroup = 'LocalHighlight',
+        latitude = location['latitude'],
+        longitude = location['longitude'],
       }
     end,
   },

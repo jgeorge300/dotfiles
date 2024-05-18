@@ -21,6 +21,11 @@ autocmd('FileType', 'text,textile,markdown,html', function()
   util.text_mode()
 end)
 
+-- disable yaml comment indent
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "yaml",
+	command = "set indentkeys-=0#"
+})
 -- better formatting for JavaScript
 autocmd('FileType', 'javascript', function()
   vim.bo.formatprg = nil
@@ -30,6 +35,11 @@ end)
 autocmd('BufEnter', '*.*', function()
   -- show the current textwidth with color columns
   require('user.util').show_view_width()
+end)
+
+autocmd('BufReadPost', '*', function()
+  -- make the buffer name a relative path
+  vim.cmd('silent! lcd .')
 end)
 
 autocmd('VimResized', '*', function()

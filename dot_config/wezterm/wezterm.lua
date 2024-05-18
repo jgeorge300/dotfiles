@@ -1,21 +1,13 @@
 local wezterm = require("wezterm")
-local util = require("util")
-local action = require("action")
-local scheme_config = require("scheme_config")
-local active_scheme = require("active_scheme")
+local util = require("user.util")
+local action = require("user.action")
+local scheme_config = require("user.scheme_config")
+local active_scheme = require("user.active_scheme")
+local session = require("user.session")
 local wez_action = wezterm.action
 
 -- Style the tabs
-wezterm.on("format-tab-title", function(tab, _, _, _, hover, max_width)
-  local colors = active_scheme.get()
-  local background = colors.tab_bar.inactive_tab.bg_color
-  local foreground = colors.tab_bar.inactive_tab.fg_color
-
-  if tab.is_active or hover then
-    background = colors.tab_bar.active_tab.bg_color
-    foreground = colors.tab_bar.active_tab.fg_color
-  end
-
+wezterm.on("format-tab-title", function(tab, _, _, _, _, max_width)
   local tab_title = tab.tab_title
   if tab_title == nil or #tab_title == 0 then
     tab_title = tab.active_pane.title
@@ -26,8 +18,6 @@ wezterm.on("format-tab-title", function(tab, _, _, _, hover, max_width)
   local title = "  " .. wezterm.truncate_right(tab_title, max_width - 4) .. "  "
 
   return {
-    { Background = { Color = background } },
-    { Foreground = { Color = foreground } },
     { Text = title },
   }
 end)
@@ -60,20 +50,20 @@ local function reload_neovim_theme()
   local timeout = homebrew_base .. "/timeout"
   local nvim = homebrew_base .. "/nvim"
 
-  local servers =
-    util.splitlines(util.run({ homebrew_base .. "/nvr", "--serverlist" }))
-  for _, server in ipairs(servers) do
-    util.run({
-      timeout,
-      "0.2",
-      nvim,
-      "--server",
-      server,
-      "--remote-expr",
-      "v:lua.require('user.themes.wezterm').apply()",
-    })
-    print("notified " .. server)
-  end
+--   local servers =
+--     util.splitlines(util.run({ homebrew_base .. "/nvr", "--serverlist" }))
+--   for _, server in ipairs(servers) do
+--     util.run({
+--       timeout,
+--       "0.2",
+--       nvim,
+--       "--server",
+--       server,
+--       "--remote-expr",
+--       "v:lua.require('user.themes.wezterm').apply()",
+--     })
+--     print("notified " .. server)
+--   end
 end
 
 -- Set the color scheme
@@ -124,7 +114,7 @@ function Title(title)
 end
 
 -- Copy mode key bindings
-local copy_mode = nil
+local copy_mode = wezterm.gui.default_key_tables().copy_mode
 if wezterm.gui then
   local copy_keys = {
     {
@@ -170,14 +160,13 @@ if wezterm.gui then
     },
   }
 
-  copy_mode = wezterm.gui.default_key_tables().copy_mode
   for _, v in ipairs(copy_keys) do
     table.insert(copy_mode, v)
   end
 end
 
 -- Search mode key bindings
-local search_mode = nil
+local search_mode = wezterm.gui.default_key_tables().search_mode
 if wezterm.gui then
   local search_keys = {
     {
@@ -198,7 +187,6 @@ if wezterm.gui then
     },
   }
 
-  search_mode = wezterm.gui.default_key_tables().search_mode
   for _, v in ipairs(search_keys) do
     table.insert(search_mode, v)
   end
@@ -226,10 +214,10 @@ config.key_tables = {
   search_mode = search_mode,
 
   window_ops = {
-    { key = "j", action = action.move_action("Down") },
-    { key = "k", action = action.move_action("Up") },
-    { key = "h", action = action.move_action("Left") },
-    { key = "l", action = action.move_action("Right") },
+    { key = "j", mods = "", action = action.move_action("Down") },
+    { key = "k", mods = "", action = action.move_action("Up") },
+    { key = "h", mods = "", action = action.move_action("Left") },
+    { key = "l", mods = "", action = action.move_action("Right") },
     {
       key = "j",
       mods = "SHIFT",
@@ -250,16 +238,24 @@ config.key_tables = {
       mods = "SHIFT",
       action = wez_action.AdjustPaneSize({ "Right", 4 }),
     },
-    { key = "m", action = wez_action.PaneSelect({ mode = "SwapWithActive" }) },
-    { key = "-", action = action.split_action("vertical") },
-    { key = "\\", action = action.split_action("horizontal") },
-    { key = "|", action = action.split_action("horizontal") },
-    { key = "Escape", action = wez_action.PopKeyTable },
-    { key = "c", action = action.copy_mode_action() },
+    {
+      key = "m",
+      mods = "",
+      action = wez_action.PaneSelect({ mode = "SwapWithActive" }),
+    },
+    { key = "-", mods = "", action = action.split_action("vertical") },
+    { key = "\\", mods = "", action = action.split_action("horizontal") },
+    { key = "|", mods = "", action = action.split_action("horizontal") },
+    { key = "Escape", mods = "", action = wez_action.PopKeyTable },
+    { key = "c", mods = "", action = action.copy_mode_action() },
     { key = "c", mods = "CTRL", action = wez_action.PopKeyTable },
-    { key = "q", action = wez_action.QuickSelect },
-    { key = "z", action = wez_action.TogglePaneZoomState },
-    { key = "w", action = wez_action.CloseCurrentPane({ confirm = true }) },
+    { key = "q", mods = "", action = wez_action.QuickSelect },
+    { key = "z", mods = "", action = wez_action.TogglePaneZoomState },
+    {
+      key = "w",
+      mods = "",
+      action = wez_action.CloseCurrentPane({ confirm = true }),
+    },
   },
 }
 
@@ -343,6 +339,18 @@ config.keys = {
     mods = "CMD|SHIFT|CTRL",
     action = action.change_scheme_action("next"),
   },
+  {
+    key = "s",
+    mods = "CMD|CTRL",
+    action = session.save(),
+  },
+
+  -- Turn off the default CMD-d action
+  {
+    key = "d",
+    mods = "CTRL",
+    action = wezterm.action.DisableDefaultAssignment,
+  },
 }
 
 config.scrollback_lines = 20000
@@ -357,5 +365,41 @@ config.window_padding = {
   top = 4,
   bottom = 4,
 }
+
+-- Disable hyperlinks
+config.mouse_bindings = {
+  -- Change the default click behavior so that it only selects
+  -- text and doesn't open hyperlinks
+  {
+    event = { Up = { streak = 1, button = "Left" } },
+    mods = "NONE",
+    action = wezterm.action.CompleteSelection("PrimarySelection"),
+  },
+
+  -- and make CTRL-Click open hyperlinks
+  {
+    event = { Up = { streak = 1, button = "Left" } },
+    mods = "CTRL",
+    action = wezterm.action.OpenLinkAtMouseCursor,
+  },
+
+  -- Disable the 'Down' event of CTRL-Click to avoid weird program behaviors
+  {
+    event = { Down = { streak = 1, button = "Left" } },
+    mods = "CTRL",
+    action = wezterm.action.Nop,
+  },
+}
+
+-- Specify a font with built-in symbols. If Wezterm uses a fallback font for
+-- symbols, it aligns using the font baseline rather than centering the glyphs.
+-- https://github.com/wez/wezterm/issues/2818
+config.font = wezterm.font("JetBrainsMonoNL Nerd Font")
+
+config.send_composed_key_when_left_alt_is_pressed = true
+
+-- This cast is needed for other config files to end up using the proper WezTerm
+-- types rather than the type of the value returned by this file
+---@cast config WezTerm
 
 return config

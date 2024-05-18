@@ -119,6 +119,12 @@ else
     compinit -i -d $ZCOMPFILE
 fi
 
+# Add AWS completions
+if (( $+commands[aws_completer] )); then
+    autoload bashcompinit && bashcompinit
+    complete -C aws_completer aws
+fi
+
 # Compile the zcompfile in the background
 {
     # Compile zcompdump, if modified, to increase startup speed.
@@ -319,6 +325,9 @@ export PROMPT_EOL_MARK=''
 # Get into vim command mode faster when hitting ESC
 export KEYTIMEOUT=1
 
+# Don't exit on EOF (ctrl+d)
+setopt IGNORE_EOF
+
 # History
 # ------------------------------------------------------------------------
 HISTFILE="$ZCACHEDIR/zhistory"  # The path to the history file
@@ -399,7 +408,6 @@ fi
 
 # Node
 # ----------------------------------------------------------------------------
-
 # Load NPM completion
 if (( $+commands[npm] )); then
     zfetch $ZPLUGDIR lukechilds/zsh-better-npm-completion
@@ -418,9 +426,11 @@ if [[ ! -d $XDG_CACHE_HOME/tmux ]]; then
     mkdir $XDG_CACHE_HOME/tmux
 fi
 
-# rtx
+# mise
 # ------------------------------------------------------------------------
-eval "$(rtx activate zsh)"
+if (( $+commands[mise] )); then
+    eval "$(mise activate zsh)"
+fi
 
 # Line editor
 # ------------------------------------------------------------------------
@@ -434,6 +444,19 @@ bindkey '^e' vi-end-of-line
 # --------------------------------------------------------------------------
 if [[ -s "$HOME/.bun/_bun" ]]; then
     source "$HOME/.bun/_bun"
+fi
+
+# 1Password
+# --------------------------------------------------------------------------
+if [[ -f $HOME/.config/op/plugins.sh ]]; then
+    . $HOME/.config/op/plugins.sh
+fi
+
+# Google Cloud
+# --------------------------------------------------------------------------
+if [[ -d $HOMEBREW_BASE/share/google-cloud-sdk ]]; then
+    . $HOMEBREW_BASE/share/google-cloud-sdk/path.zsh.inc
+    . $HOMEBREW_BASE/share/google-cloud-sdk/completion.zsh.inc
 fi
 
 # zsh-syntax-highlighting
@@ -482,6 +505,13 @@ export ZSH_AUTOSUGGEST_USE_ASYNC=1
 # hang zsh
 ZSH_AUTOSUGGEST_CLEAR_WIDGETS=("${(@)ZSH_AUTOSUGGEST_CLEAR_WIDGETS:#(up|down)-line-or-history}")
 ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(history-substring-search-up history-substring-search-down)
+
+if (( $+commands[git] )); then
+    export GIT_COMMITTER_NAME=${GIT_COMMITTER_NAME:-$(git config --get user.name)}
+    export GIT_COMMITTER_EMAIL=${GIT_COMMITTER_EMAIL:-$(git config --get user.email)}
+    export GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-$(git config --get user.name)}
+    export GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-$(git config --get user.email)}
+fi
 
 # Local config
 # --------------------------------------------------------------------------

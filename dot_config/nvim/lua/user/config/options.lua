@@ -1,12 +1,6 @@
 local o = vim.opt
 local g = vim.g
 
--- Enable lua filetype detection
-if vim.fn.has('nvim-0.7') and not vim.fn.has('nvim-0.8') then
-  g.do_filetype_lua = 1
-  g.did_load_filetypes = 0
-end
-
 -- Leader for mappings
 g.mapleader = ';'
 
@@ -90,7 +84,7 @@ o.showmode = false
 o.mouse = 'a'
 
 -- enable truecolor mode
-if os.getenv('SSH_CLIENT') ~= nil then
+if os.getenv('TERM') == 'xterm-color' then
 	o.termguicolors = false
 else
 	o.termguicolors = true
@@ -108,11 +102,6 @@ o.diffopt = o.diffopt + { 'internal', 'algorithm:patience' }
 
 -- show line numbers if the window is wide enough
 o.number = vim.go.columns >= 88
-
--- set python version for pyx commands
-if vim.fn.has('pythonx') == 1 then
-  o.pyxversion = 3
-end
 
 -- use ripgrep if available
 if vim.fn.executable('rg') then
@@ -172,3 +161,5 @@ o.fillchars:append('foldsep: ')
 o.fillchars:append('foldopen:▼')
 o.fillchars:append('foldclose:▶')
 o.fillchars:append('fold:-')
+
+vim.go.splitkeep = 'topline'

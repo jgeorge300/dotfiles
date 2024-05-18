@@ -1,5 +1,5 @@
 local wezterm = require("wezterm")
-local util = require("util")
+local util = require("user.util")
 
 local scheme_file = wezterm.home_dir .. "/.local/share/wezterm/scheme.json"
 
@@ -7,15 +7,15 @@ local M = {}
 
 -- Load a saved scheme config
 function M.get()
-	local data = util.load_json(scheme_file)
-	if data ~= nil then
+	local ok, data = pcall(util.load_json, scheme_file)
+	if ok and data ~= nil then
 		if data.light ~= nil and data.dark ~= nil then
 			return data
 		end
 	end
 
 	return {
-		light = "Selenized Light (selenized)",
+		light = "Selenized White (selenized)",
 		dark = "Selenized Black (selenized)",
 		auto_switch = true,
 	}

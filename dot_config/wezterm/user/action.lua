@@ -1,7 +1,7 @@
 local wezterm = require("wezterm")
 local action = wezterm.action
 local action_callback = wezterm.action_callback
-local util = require("util")
+local util = require("user.util")
 
 local M = {}
 
@@ -16,8 +16,8 @@ local vim_dir_map = {
 function M.move_action(dir)
 	return action_callback(function(window, pane)
 		local name = pane:get_foreground_process_name()
-		local timeout = util.homebrew_base() .. "/timeout"
-		local nvim = util.homebrew_base() .. "/nvim"
+		local timeout = util.find_app("timeout")
+		local nvim = util.find_app("nvim")
 
 		if name ~= nil and pane:get_foreground_process_name():sub(-4) == "nvim" then
 			-- Try to do the move in vim. If it doesn't work, do the move in

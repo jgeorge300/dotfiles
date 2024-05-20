@@ -8,7 +8,7 @@ local os = require('os')
 -- Default color palettes in the Selenized format
 ---@type { [string]: Palette }
 local palettes = {
-  black = {
+  dark = {
     bg_0 = '#181818',
     bg_1 = '#252525',
     bg_2 = '#3b3b3b',
@@ -32,7 +32,7 @@ local palettes = {
     br_orange = '#fa9153',
     br_violet = '#b891f5',
   },
-  white = {
+  light = {
     bg_0 = '#ffffff',
     bg_1 = '#ebebeb',
     bg_2 = '#cdcdcd',
@@ -56,59 +56,11 @@ local palettes = {
     br_orange = '#ba3700',
     br_violet = '#6b40c3',
   },
-  dark = {
-    bg_0 = '#103c48',
-    bg_1 = '#184956',
-    bg_2 = '#2d5b69',
-    dim_0 = '#72898f',
-    fg_0 = '#adbcbc',
-    fg_1 = '#cad8d9',
-    red = '#fa5750',
-    green = '#75b938',
-    yellow = '#dbb32d',
-    blue = '#4695f7',
-    magenta = '#f275be',
-    cyan = '#41c7b9',
-    br_red = '#ff665c',
-    br_green = '#84c747',
-    br_yellow = '#ebc13d',
-    br_blue = '#58a3ff',
-    br_magenta = '#ff84cd',
-    br_cyan = '#53d6c7',
-    orange = '#ed8649',
-    violet = '#af88eb',
-    br_orange = '#fd9456',
-    br_violet = '#bd96fa',
-  },
-  light = {
-    bg_0 = '#fbf3db',
-    bg_1 = '#e9e4d0',
-    bg_2 = '#cfcebe',
-    dim_0 = '#909995',
-    fg_0 = '#53676d',
-    fg_1 = '#3a4d53',
-    red = '#d2212d',
-    green = '#489100',
-    yellow = '#ad8900',
-    blue = '#0072d4',
-    magenta = '#ca4898',
-    cyan = '#009c8f',
-    br_red = '#cc1729',
-    br_green = '#428b00',
-    br_yellow = '#a78300',
-    br_blue = '#006dce',
-    br_magenta = '#c44392',
-    br_cyan = '#00978a',
-    orange = '#c25d1e',
-    violet = '#8762c6',
-    br_orange = '#bc5819',
-    br_violet = '#825dc0',
-  },
 }
 
 local cterm_palette = {
-  bg_0 = nil,
-  fg_0 = nil,
+  bg_0 = 0,
+  fg_0 = 15,
   bg_1 = 0,
   red = 1,
   green = 2,
@@ -131,37 +83,17 @@ local cterm_palette = {
   br_violet = 19,
 }
 
--- Convert a Wezterm color scheme to the Selenized format.
---
--- This function assumes a scheme that follows standard XTerm conventions, with
--- 2 extra dark + bright colors in the 16-19 indexes
----@param wezterm_colors table
----@return Palette
-local function to_selenized(wezterm_colors)
-  return {
-    bg_0 = wezterm_colors.background,
-    bg_1 = wezterm_colors.ansi['1'],
-    bg_2 = wezterm_colors.brights['1'],
-    dim_0 = wezterm_colors.ansi['8'],
-    fg_0 = wezterm_colors.foreground,
-    fg_1 = wezterm_colors.brights['8'],
-    red = wezterm_colors.ansi['2'],
-    green = wezterm_colors.ansi['3'],
-    yellow = wezterm_colors.ansi['4'],
-    blue = wezterm_colors.ansi['5'],
-    magenta = wezterm_colors.ansi['6'],
-    cyan = wezterm_colors.ansi['7'],
-    br_red = wezterm_colors.brights['2'],
-    br_green = wezterm_colors.brights['3'],
-    br_yellow = wezterm_colors.brights['4'],
-    br_blue = wezterm_colors.brights['5'],
-    br_magenta = wezterm_colors.brights['6'],
-    br_cyan = wezterm_colors.brights['7'],
-    orange = wezterm_colors.indexed['16'],
-    br_orange = wezterm_colors.indexed['17'],
-    violet = wezterm_colors.indexed['18'],
-    br_violet = wezterm_colors.indexed['19'],
-  }
+---@return Palette | CtermPalette
+local function load_colors()
+  if vim.go.termguicolors then
+    if vim.go.background == 'light' then
+      return palettes.light
+    end
+
+    return palettes.dark
+  end
+
+  return cterm_palette
 end
 
 -- A convenience function for linking highlight groups
@@ -171,9 +103,15 @@ local function hilink(group, other_group)
   vim.api.nvim_set_hl(0, group, { link = other_group })
 end
 
+local M = {
+  load_colors = load_colors,
+}
+
 -- Apply a theme in the Selenized format
----@param c Palette | CtermPalette
-local function apply_theme(c)
+---@return nil
+local function apply_theme()
+  local c = load_colors()
+
   -- A convenience function for setting highlight groups
   local hi = nil
   if vim.go.termguicolors then
@@ -219,6 +157,7 @@ local function apply_theme(c)
   hilink('Label', 'Statement')
   hilink('Macro', 'PreProc')
   hilink('MatchParen', 'MatchBackground')
+  hilink('NormalFloat', 'Normal')
   hilink('Number', 'Constant')
   hilink('Operator', 'Statement')
   hilink('PreCondit', 'PreProc')
@@ -257,9 +196,8 @@ local function apply_theme(c)
   hi('ModeMsg', {})
   hi('MoreMsg', {})
   hi('NonText', {})
-  hi('Normal', { fg = c.fg_0, bg = c.bg_0 })
-  hi('NormalFloat', { bg = c.bg_0 })
-  hi('NormalNC', { fg = c.dim_0, bg = c.bg_0 })
+  hi('Normal', { fg = c.fg_0 })
+  hi('NormalNC', { fg = c.dim_0 })
   hi('Pmenu', { fg = c.fg_0, bg = c.bg_1 })
   hi('PmenuSbar', { fg = c.bg_2 })
   hi('PmenuSel', { bg = c.bg_2 })
@@ -287,7 +225,7 @@ local function apply_theme(c)
   hi('ToolbarLine', { bg = c.bg_2 })
   hi('Type', { fg = c.green })
   hi('Underlined', { fg = c.violet, underline = true })
-  hi('VertSplit', { fg = c.dim_0, bg = c.bg_0 })
+  hi('VertSplit', { fg = c.dim_0 })
   hi('VimCommand', { fg = c.yellow })
   hi('Visual', { bg = c.bg_2 })
   hi('VisualNOS', {})
@@ -352,6 +290,10 @@ local function apply_theme(c)
   hilink('@markup.list', 'Delimiter')
   hilink('@markup.raw', 'String')
   hilink('@markup.heading', 'Title')
+
+  hilink('@diff.plus', 'diffAdded')
+  hilink('@diff.minus', 'diffRemoved')
+  hilink('@attribute', 'Type')
 
   hilink('typescriptBraces', 'Delimiter')
   hilink('typescriptParens', 'Delimiter')
@@ -424,58 +366,33 @@ local function apply_theme(c)
   hilink('NavbuddyString', 'String')
   hilink('NavbuddyStruct', 'Structure')
   hilink('NavbuddyVariable', '@variable')
-end
 
-local M = {}
+  -- notify listeners that the colorscheme has been set
+  vim.g.colors_name = 'wezterm'
+  vim.api.nvim_exec_autocmds('ColorScheme', {})
+end
 
 ---@return nil
-function M.apply()
-  local colors = M.load_colors()
-
-  vim.g.colors_name = 'wezterm'
-
-  if vim.go.termguicolors then
-    ---@cast colors Palette
-    if require('user.util.theme').is_dark(colors.bg_0) then
-      vim.go.background = 'dark'
-    else
-      vim.go.background = 'light'
-    end
-  end
-
-  apply_theme(colors)
-
-  vim.api.nvim_exec_autocmds('ColorScheme', {})
-
-  -- reload the theme if the background changes
-  vim.api.nvim_create_autocmd('OptionSet', {
-    pattern = 'background',
-    callback = function()
-      local colors = M.load_colors()
-      apply_theme(colors)
-    end
-  })
+function M.set_background(value)
+  print('Setting background to ' .. value)
+  vim.schedule(function()
+    vim.go.background = value
+  end)
 end
 
----@return Palette | CtermPalette
-function M.load_colors()
-  if vim.go.termguicolors then
-    local colors_file = os.getenv('HOME') .. '/.local/share/wezterm/colors.json'
-    local ok, colors_text = pcall(vim.fn.readfile, colors_file)
+---@return nil
+function M.setup()
+  -- initially clear the Normal group to prevent a flash of an incorrect
+  -- background
+  vim.api.nvim_set_hl(0, 'Normal', {})
 
-    if not ok then
-      if vim.go.background == 'light' then
-        return palettes.white
-      end
-      return palettes.black
-    else
-      local scheme = vim.fn.json_decode(colors_text)
-      ---@cast scheme table
-      return to_selenized(scheme)
-    end
-  else
-    return cterm_palette
-  end
+  -- load the theme if the TUI color handling setup changes
+  vim.api.nvim_create_autocmd('OptionSet', {
+    pattern = { 'background', 'termguicolors' },
+    callback = function()
+      apply_theme()
+    end,
+  })
 end
 
 return M

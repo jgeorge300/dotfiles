@@ -23,8 +23,8 @@ end)
 
 -- disable yaml comment indent
 vim.api.nvim_create_autocmd("FileType", {
-	pattern = "yaml",
-	command = "set indentkeys-=0#"
+  pattern = "yaml",
+  command = "set indentkeys-=0#"
 })
 -- better formatting for JavaScript
 autocmd('FileType', 'javascript', function()
@@ -32,8 +32,14 @@ autocmd('FileType', 'javascript', function()
   vim.bo.formatexpr = nil
 end)
 
-autocmd('BufEnter', '*.*', function()
-  -- show the current textwidth with color columns
+autocmd('User', 'UiReady', function()
+  autocmd('BufEnter', '*.*', function()
+    -- show the current textwidth with color columns
+    require('user.util').show_view_width()
+  end)
+
+  -- Show the view width when the UI is ready in case that event was emitted
+  -- after a buffer had already been entered
   require('user.util').show_view_width()
 end)
 

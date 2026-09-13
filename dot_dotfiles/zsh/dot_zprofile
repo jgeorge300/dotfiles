@@ -1,0 +1,187 @@
+# Login-session setup: paths, toolchains, and runtime directories.
+# Shared variables are initialized by .zshenv before this file is read.
+
+# Language
+# ----------------------------------------------------------------------------
+[[ -z "$LANG" ]] && eval "$(locale)"
+[[ -z "$LANG" ]] && export LANG=en_US.UTF-8
+[[ -z "$LC_ALL" ]] && export LC_ALL=$LANG
+
+# Cache and temp files
+# ----------------------------------------------------------------------------
+[[ -d "$XDG_CACHE_HOME" ]] || mkdir -p "$XDG_CACHE_HOME"
+[[ -d "$ZCACHEDIR" ]] || mkdir -p "$ZCACHEDIR"
+[[ -d "$XDG_DATA_HOME" ]] || mkdir -p "$XDG_DATA_HOME"
+[[ -d "$ZFUNCDIR" ]] || mkdir -p "$ZFUNCDIR"
+
+if [[ -d "$TMPDIR" ]]; then
+	export TMPPREFIX=${TMPDIR%/}/zsh
+	[[ -d "$TMPPREFIX" ]] || mkdir -p "$TMPPREFIX"
+fi
+
+# Plugins
+# ----------------------------------------------------------------------------
+if [[ ! -d "$ZPLUGDIR" ]]; then
+    mkdir -p "$ZPLUGDIR"
+fi
+
+# General paths
+# ----------------------------------------------------------------------------
+typeset -gU mailpath path
+
+if [[ -d /usr/local/bin ]]; then
+	path=(
+		/usr/local/bin
+		$path
+	)
+fi
+
+# Homebrew needs to be in the path for later tests to work
+if [[ -d $HOMEBREW_BASE ]]; then
+	path=(
+		$HOMEBREW_BASE/bin
+		$HOMEBREW_BASE/sbin
+		$path
+	)
+fi
+
+# Groovy
+# ----------------------------------------------------------------------------
+if [[ -z "$GROOVY_HOME" ]]; then
+	export GROOVY_HOME=$HOMEBREW_BASE/opt/groovy/libexec
+fi
+
+# Node
+# ----------------------------------------------------------------------------
+if [[ -e $HOME/.config/ssl/ca.pem ]]; then
+	export NODE_EXTRA_CA_CERTS=$HOME/.config/ssl/ca.pem
+fi
+
+# Terminal
+# --------------------------------------------------------------------------
+if [[ -z $TERM_PROGRAM ]]; then
+	if [[ -n $GNOME_TERMINAL_SCREEN ]]; then
+		export TERM_PROGRAM=gnome-terminal
+	fi
+fi
+
+# pkg-config
+# --------------------------------------------------------------------------
+typeset -U pkg_config_path
+
+if [[ -d $HOMEBREW_BASE/opt/openssl ]]; then
+	pkg_config_path=(
+		$HOMEBREW_BASE/opt/openssl/lib/pkgconfig
+		$pkg_config_path
+	)
+fi
+
+if [[ -d $HOMEBREW_BASE/opt/icu4c ]]; then
+	pkg_config_path=(
+		$HOMEBREW_BASE/opt/icu4c/lib/pkgconfig
+		$pkg_config_path
+	)
+fi
+
+export PKG_CONFIG_PATH=$(print -R ${(j|:|)pkg_config_path})
+
+# Path
+# ----------------------------------------------------------------------------
+
+# LLVM
+# Put LLVM at the end of the path to avoid overriding Xcode's LLVM in projects
+# that use it (this may not be sufficient)
+if [[ -d $HOMEBREW_BASE/opt/llvm ]]; then
+	path=(
+		$path
+		$HOMEBREW_BASE/opt/llvm/bin
+	)
+fi
+
+# Rust
+if [[ -f $HOME/.cargo/env ]]; then
+	. $HOME/.cargo/env
+fi
+
+# sqlite3
+if [[ -d $HOMEBREW_BASE/opt/sqlite3 ]]; then
+	path=(
+		$HOMEBREW_BASE/opt/sqlite3/bin
+		$path
+	)
+fi
+
+# Python
+if [[ -d $HOMEBREW_BASE/opt/python3 ]]; then
+	# Put python at the end of the path since some of its programs, like pip,
+	# will eventually be overridden with things in $HOMEBREW_BASE/bin
+	# https://discourse.brew.sh/t/pip-install-upgrade-pip-breaks-pip-when-installed-with-homebrew/5338
+	path=(
+		$HOMEBREW_BASE/opt/python3/libexec/bin
+		$path
+	)
+fi
+
+if (( $+commands[pdm] )); then
+	function () {
+		local pdm_dirs=($HOMEBREW_BASE/Cellar/pdm/*)
+		local pdm_dir=${pdm_dirs[-1]}
+		local lib_dirs=($pdm_dir/libexec/lib/*)
+		local lib_dir=${lib_dirs[-1]}
+		if [[ -z $PYTHONPATH ]]; then
+			export PYTHONPATH=$lib_dir/site-packages/pdm/pep582
+		elif [[ ! $PYTHONPATH =~ $lib_dir ]]; then
+			export PYTHONPATH=$lib_dir/site-packages/pdm/pep582:$PYTHONPATH
+		fi
+	}
+fi
+
+# Deno
+if [[ -d $HOME/.deno/bin ]]; then
+	path=(
+		$HOME/.deno/bin
+		$path
+	)
+fi
+
+# Bun
+if [[ -d $HOME/.bun/bin ]]; then
+    export BUN_INSTALL="$HOME/.bun"
+	path=(
+		$BUN_INSTALL/bin
+		$path
+	)
+fi
+
+# mise
+if [[ -d $HOME/.local/share/mise/bin ]]; then
+	path=(
+		$HOME/.local/share/mise/bin
+		$path
+	)
+fi
+
+# Add user dirs to path
+# --------------------------------------------------------------------------
+path=($DOTFILES/bin $path)
+
+# From user-level packages
+if [[ -d $HOME/.local/bin ]]; then
+	path=($HOME/.local/bin $path)
+fi
+
+# Local apps
+if [[ -d $HOME/bin ]]; then
+	path=($HOME/bin $path)
+fi
+
+# Local apps
+if [[ -d $HOME/Applications ]]; then
+	path=($HOME/Applications $path)
+fi
+
+# Local config
+# --------------------------------------------------------------------------
+[[ -f $ZCONFDIR/zshenv ]] && source $ZCONFDIR/zshenv
+
+# vim:shiftwidth=4:tabstop=4:noexpandtab

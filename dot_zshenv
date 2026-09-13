@@ -1,2 +1,3 @@
 export ZDOTDIR=$HOME/.dotfiles/zsh
-source $ZDOTDIR/.zshenv
+# Zsh selected this file before ZDOTDIR was set; load the shared environment.
+source "$ZDOTDIR/.zshenv"

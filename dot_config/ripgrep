@@ -3,3 +3,9 @@
 
 # be case insensitive by default
 --smart-case
+
+# follow symlinks
+--follow
+
+# don't skip hidden files by default
+--hidden

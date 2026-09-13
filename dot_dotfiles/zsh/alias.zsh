@@ -188,7 +188,7 @@ fi
 
 # Better ls
 if (( $+commands[eza] )); then
-    alias ls='eza -F'
+    alias ls='eza --classify=always'
     alias lt='ls -T'
     alias la='ls -a'
     alias l='ls -1a'

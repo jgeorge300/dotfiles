@@ -55,7 +55,7 @@ else
 fi
 
 export EDITOR=$SUDO_EDITOR
-export VISUAL=$SUDO_VISUAL
+export VISUAL=$EDITOR
 
 # Turn on color for everything
 # ------------------------------------------------------------------------
@@ -101,6 +101,7 @@ fpath=(
     $fpath
     $ZPLUGDIR/zsh-users/zsh-completions/src
     $ZCOMPDIR
+    $HOMEBREW_BASE/share/zsh/site-functions
     $HOMEBREW_BASE/share/zsh-completions
 )
 
@@ -254,8 +255,8 @@ source $ZDOTDIR/alias.zsh
 
 # Theme
 # ------------------------------------------------------------------------
-if [[ -e $HOME/.theme ]]; then
-    theme=$(cat $HOME/.theme)
+if [[ -e $HOME/.local/share/theme ]]; then
+    theme=$(cat $HOME/.local/share/theme)
     if [[ $theme == 'light' ]]; then
         export THEME_VARIANT=$theme
     elif [[ $theme == 'black' ]]; then
@@ -506,18 +507,14 @@ export ZSH_AUTOSUGGEST_USE_ASYNC=1
 ZSH_AUTOSUGGEST_CLEAR_WIDGETS=("${(@)ZSH_AUTOSUGGEST_CLEAR_WIDGETS:#(up|down)-line-or-history}")
 ZSH_AUTOSUGGEST_CLEAR_WIDGETS+=(history-substring-search-up history-substring-search-down)
 
-# if (( $+commands[git] )); then
-#     export GIT_COMMITTER_NAME=${GIT_COMMITTER_NAME:-$(git config --get user.name)}
-#     export GIT_COMMITTER_EMAIL=${GIT_COMMITTER_EMAIL:-$(git config --get user.email)}
-#     export GIT_AUTHOR_NAME=${GIT_AUTHOR_NAME:-$(git config --get user.name)}
-#     export GIT_AUTHOR_EMAIL=${GIT_AUTHOR_EMAIL:-$(git config --get user.email)}
-# fi
-
 # zoxide
 # --------------------------------------------------------------------------
 if (( $+commands[zoxide] )); then
     eval "$(zoxide init zsh --cmd cd)"
 fi
+
+# 4-space tabs
+[[ -t 1 ]] && (( $+commands[tabs] )) && tabs -4
 
 # Local config
 # --------------------------------------------------------------------------

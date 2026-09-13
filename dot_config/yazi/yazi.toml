@@ -1,0 +1,7 @@
+# Give equal space to the file list and preview.
+[mgr]
+ratio = [0, 4, 4]
+
+[preview]
+max_width = 2000
+max_height = 2000

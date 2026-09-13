@@ -167,7 +167,7 @@
 {{- if eq .chezmoi.os "darwin" }}
 
 [difftool "sourcetree"]
-	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
+	cmd = /Applications/DiffMerge.app/Contents/MacOS/DiffMerge --nosplash \"$LOCAL\" \"$REMOTE\"
 	path =
 {{- end }}
 

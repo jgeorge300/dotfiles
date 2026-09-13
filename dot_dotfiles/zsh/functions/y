@@ -1,0 +1,12 @@
+# Launch Yazi and adopt its chosen directory when it writes a cwd file.
+local tmp cwd result
+tmp=$(mktemp -t yazi-cwd.XXXXXX) || return
+command yazi "$@" --cwd-file="$tmp"
+result=$?
+IFS= read -r -d '' cwd < "$tmp"
+command rm -f -- "$tmp"
+if (( result == 0 )) && [[ -n "$cwd" && "$cwd" != "$PWD" && -d "$cwd" ]]; then
+    builtin cd -- "$cwd"
+else
+    return $result
+fi

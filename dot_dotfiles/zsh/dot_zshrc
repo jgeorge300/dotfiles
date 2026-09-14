@@ -19,11 +19,7 @@ fi
 
 # Prompt
 # --------------------------------------------------------------------------
-if [[ $TERM_PROGRAM == "WarpTerminal" ]]; then
-    source ${ZDOTDIR}/ohmyposhwarprc
-    bindkey '^[[A' up-line-or-local-history
-    bindkey '^[[B' down-line-or-local-history
-elif [[ -f ${ZDOTDIR}/ohmyposhrc ]]; then
+if [[ -f ${ZDOTDIR}/ohmyposhrc ]]; then
     source ${ZDOTDIR}/ohmyposhrc
     bindkey '^[[A' up-line-or-local-history
     bindkey '^[[B' down-line-or-local-history

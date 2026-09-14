@@ -164,13 +164,9 @@
 [include]
 	path = ~/.config/local/git/config
 
-{{- if eq .chezmoi.os "darwin" }}
-
-[difftool "sourcetree"]
-	cmd = /Applications/DiffMerge.app/Contents/MacOS/DiffMerge --nosplash \"$LOCAL\" \"$REMOTE\"
-	path =
-{{- end }}
-
 [user]
 	email = {{ .email }}
 	name = Joe George
+
+[worktree]
+  guessRemote = true
